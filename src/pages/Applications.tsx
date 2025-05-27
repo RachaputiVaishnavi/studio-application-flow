@@ -49,7 +49,15 @@ const mockApplications = [
     pptLinks: [
       { id: 1, name: "Business Plan PPT", url: "https://example.com/cloudnet-business-plan.pptx" },
       { id: 2, name: "Product Demo", url: "https://example.com/cloudnet-demo.pdf" }
-    ]
+    ],
+    checklistItems: {
+      'check-1': false,
+      'check-2': false,
+      'check-3': false,
+      'check-4': false,
+      'check-5': false,
+      'check-6': false,
+    }
   },
   { 
     id: 2, 
@@ -65,7 +73,15 @@ const mockApplications = [
     secondScreeningNotes: "Due diligence shows strong compliance framework. Ready for Series A.",
     pptLinks: [
       { id: 1, name: "Pitch Deck", url: "https://example.com/fintech-pitch.pdf" }
-    ]
+    ],
+    checklistItems: {
+      'check-1': true,
+      'check-2': true,
+      'check-3': false,
+      'check-4': false,
+      'check-5': false,
+      'check-6': false,
+    }
   },
   { 
     id: 3, 
@@ -79,7 +95,15 @@ const mockApplications = [
     timestamp: "2023-03-05",
     firstScreeningNotes: "",
     secondScreeningNotes: "",
-    pptLinks: []
+    pptLinks: [],
+    checklistItems: {
+      'check-1': false,
+      'check-2': false,
+      'check-3': false,
+      'check-4': false,
+      'check-5': false,
+      'check-6': false,
+    }
   },
   { 
     id: 4, 
@@ -95,7 +119,15 @@ const mockApplications = [
     secondScreeningNotes: "",
     pptLinks: [
       { id: 1, name: "Product Overview", url: "https://example.com/edtech-overview.pptx" }
-    ]
+    ],
+    checklistItems: {
+      'check-1': true,
+      'check-2': true,
+      'check-3': true,
+      'check-4': true,
+      'check-5': true,
+      'check-6': true,
+    }
   },
   { 
     id: 5, 
@@ -109,7 +141,15 @@ const mockApplications = [
     timestamp: "2023-03-20",
     firstScreeningNotes: "Concept needs more validation. Limited market research provided.",
     secondScreeningNotes: "",
-    pptLinks: []
+    pptLinks: [],
+    checklistItems: {
+      'check-1': false,
+      'check-2': false,
+      'check-3': false,
+      'check-4': false,
+      'check-5': false,
+      'check-6': false,
+    }
   },
   { 
     id: 6, 
@@ -126,7 +166,15 @@ const mockApplications = [
     pptLinks: [
       { id: 1, name: "Technical Demo", url: "https://example.com/robotics-tech-demo.pdf" },
       { id: 2, name: "Market Analysis", url: "https://example.com/robotics-market.pptx" }
-    ]
+    ],
+    checklistItems: {
+      'check-1': false,
+      'check-2': false,
+      'check-3': false,
+      'check-4': false,
+      'check-5': false,
+      'check-6': false,
+    }
   },
 ];
 
@@ -236,8 +284,8 @@ const Applications = () => {
     setNewLinkName("");
     setNewLinkUrl("");
     
-    // Reset checklist
-    setChecklistItems({
+    // Load existing checklist items
+    setChecklistItems(application.checklistItems || {
       'check-1': false,
       'check-2': false,
       'check-3': false,
@@ -328,12 +376,83 @@ const Applications = () => {
     });
   };
 
-  // Handle checklist item changes
+  // Handle checklist item changes with persistence
   const handleChecklistChange = (itemId: string, checked: boolean) => {
-    setChecklistItems(prev => ({
-      ...prev,
+    const updatedChecklistItems = {
+      ...checklistItems,
       [itemId]: checked
+    };
+    
+    setChecklistItems(updatedChecklistItems);
+    
+    // Update the application in the mock data
+    setApplications(prev => prev.map(app => 
+      app.id === selectedApplication.id 
+        ? { ...app, checklistItems: updatedChecklistItems }
+        : app
+    ));
+    
+    // Update the selected application state
+    setSelectedApplication(prev => ({
+      ...prev,
+      checklistItems: updatedChecklistItems
     }));
+    
+    toast({
+      title: "Checklist Updated",
+      description: "Evaluation checklist item has been saved.",
+    });
+  };
+
+  // Handle approve button click
+  const handleApprove = () => {
+    const updatedApplications = applications.map(app => 
+      app.id === selectedApplication.id 
+        ? { ...app, status: "SELECTED" }
+        : app
+    );
+    
+    setApplications(updatedApplications);
+    setSelectedApplication(prev => ({ ...prev, status: "SELECTED" }));
+    
+    toast({
+      title: "Application Approved",
+      description: `${selectedApplication.name} has been approved and status updated to Selected.`,
+    });
+  };
+
+  // Handle reject button click
+  const handleReject = () => {
+    const updatedApplications = applications.map(app => 
+      app.id === selectedApplication.id 
+        ? { ...app, status: "REJECTED" }
+        : app
+    );
+    
+    setApplications(updatedApplications);
+    setSelectedApplication(prev => ({ ...prev, status: "REJECTED" }));
+    
+    toast({
+      title: "Application Rejected",
+      description: `${selectedApplication.name} has been rejected and status updated.`,
+    });
+  };
+
+  // Handle hold button click
+  const handleHold = () => {
+    const updatedApplications = applications.map(app => 
+      app.id === selectedApplication.id 
+        ? { ...app, status: "ON-HOLD" }
+        : app
+    );
+    
+    setApplications(updatedApplications);
+    setSelectedApplication(prev => ({ ...prev, status: "ON-HOLD" }));
+    
+    toast({
+      title: "Application On Hold",
+      description: `${selectedApplication.name} has been put on hold.`,
+    });
   };
 
   // Reset filters
@@ -917,15 +1036,15 @@ const Applications = () => {
             
             <DialogFooter>
               <div className="flex gap-2 justify-end w-full">
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={handleReject}>
                   <X size={16} className="mr-1" />
                   Reject
                 </Button>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={handleHold}>
                   <Pause size={16} className="mr-1" />
                   Hold
                 </Button>
-                <Button size="sm">
+                <Button size="sm" onClick={handleApprove}>
                   <Check size={16} className="mr-1" />
                   Approve
                 </Button>
