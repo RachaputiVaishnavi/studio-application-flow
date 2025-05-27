@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { 
   Search, Filter, Check, X, Pause, ChevronDown,
-  ArrowUpDown, ArrowUp, ArrowDown, Save
+  ArrowUpDown, ArrowUp, ArrowDown, Save, Link, Plus, Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,7 +43,13 @@ const mockApplications = [
     status: "ROUND-1",
     revenue: "$10,000", 
     fundingAsk: "$250,000", 
-    timestamp: "2023-01-15" 
+    timestamp: "2023-01-15",
+    firstScreeningNotes: "Strong technical team with good market understanding. MVP shows promise.",
+    secondScreeningNotes: "",
+    pptLinks: [
+      { id: 1, name: "Business Plan PPT", url: "https://example.com/cloudnet-business-plan.pptx" },
+      { id: 2, name: "Product Demo", url: "https://example.com/cloudnet-demo.pdf" }
+    ]
   },
   { 
     id: 2, 
@@ -54,7 +60,12 @@ const mockApplications = [
     status: "ROUND-2",
     revenue: "$25,000", 
     fundingAsk: "$300,000", 
-    timestamp: "2023-02-10" 
+    timestamp: "2023-02-10",
+    firstScreeningNotes: "Impressive user growth and solid financial projections. Team has relevant experience.",
+    secondScreeningNotes: "Due diligence shows strong compliance framework. Ready for Series A.",
+    pptLinks: [
+      { id: 1, name: "Pitch Deck", url: "https://example.com/fintech-pitch.pdf" }
+    ]
   },
   { 
     id: 3, 
@@ -65,7 +76,10 @@ const mockApplications = [
     status: "NEW",
     revenue: "$0", 
     fundingAsk: "$150,000", 
-    timestamp: "2023-03-05" 
+    timestamp: "2023-03-05",
+    firstScreeningNotes: "",
+    secondScreeningNotes: "",
+    pptLinks: []
   },
   { 
     id: 4, 
@@ -76,7 +90,12 @@ const mockApplications = [
     status: "SELECTED",
     revenue: "$15,000", 
     fundingAsk: "$200,000", 
-    timestamp: "2023-03-15" 
+    timestamp: "2023-03-15",
+    firstScreeningNotes: "Innovative approach to online learning. Strong pilot results.",
+    secondScreeningNotes: "",
+    pptLinks: [
+      { id: 1, name: "Product Overview", url: "https://example.com/edtech-overview.pptx" }
+    ]
   },
   { 
     id: 5, 
@@ -87,7 +106,10 @@ const mockApplications = [
     status: "REJECTED",
     revenue: "$0", 
     fundingAsk: "$100,000", 
-    timestamp: "2023-03-20" 
+    timestamp: "2023-03-20",
+    firstScreeningNotes: "Concept needs more validation. Limited market research provided.",
+    secondScreeningNotes: "",
+    pptLinks: []
   },
   { 
     id: 6, 
@@ -98,7 +120,13 @@ const mockApplications = [
     status: "ON-HOLD",
     revenue: "$5,000", 
     fundingAsk: "$500,000", 
-    timestamp: "2023-04-01" 
+    timestamp: "2023-04-01",
+    firstScreeningNotes: "Cutting-edge technology but high execution risk. Team needs strengthening.",
+    secondScreeningNotes: "",
+    pptLinks: [
+      { id: 1, name: "Technical Demo", url: "https://example.com/robotics-tech-demo.pdf" },
+      { id: 2, name: "Market Analysis", url: "https://example.com/robotics-market.pptx" }
+    ]
   },
 ];
 
@@ -130,9 +158,17 @@ const Applications = () => {
   const [showDetails, setShowDetails] = useState(false);
   const [sortConfig, setSortConfig] = useState<{key: string, direction: 'asc' | 'desc'} | null>(null);
 
-  // New state for screening notes and checklist
-  const [screeningNotes, setScreeningNotes] = useState("");
-  const [savedNotes, setSavedNotes] = useState("");
+  // Enhanced state for screening notes
+  const [firstScreeningNotes, setFirstScreeningNotes] = useState("");
+  const [secondScreeningNotes, setSecondScreeningNotes] = useState("");
+  const [savedFirstNotes, setSavedFirstNotes] = useState("");
+  const [savedSecondNotes, setSavedSecondNotes] = useState("");
+  
+  // State for PPT links
+  const [pptLinks, setPptLinks] = useState<{id: number, name: string, url: string}[]>([]);
+  const [newLinkName, setNewLinkName] = useState("");
+  const [newLinkUrl, setNewLinkUrl] = useState("");
+  
   const [checklistItems, setChecklistItems] = useState({
     'check-1': false,
     'check-2': false,
@@ -188,9 +224,19 @@ const Applications = () => {
   const handleViewDetails = (application: any) => {
     setSelectedApplication(application);
     setShowDetails(true);
-    // Reset notes and checklist when opening a new application
-    setScreeningNotes("");
-    setSavedNotes("");
+    
+    // Load existing notes
+    setFirstScreeningNotes("");
+    setSecondScreeningNotes("");
+    setSavedFirstNotes(application.firstScreeningNotes || "");
+    setSavedSecondNotes(application.secondScreeningNotes || "");
+    
+    // Load PPT links
+    setPptLinks(application.pptLinks || []);
+    setNewLinkName("");
+    setNewLinkUrl("");
+    
+    // Reset checklist
     setChecklistItems({
       'check-1': false,
       'check-2': false,
@@ -201,12 +247,84 @@ const Applications = () => {
     });
   };
 
-  // Handle saving screening notes
-  const handleSaveNotes = () => {
-    setSavedNotes(screeningNotes);
+  // Handle saving first screening notes
+  const handleSaveFirstNotes = () => {
+    setSavedFirstNotes(firstScreeningNotes);
+    
+    // Update the application in the mock data
+    setApplications(prev => prev.map(app => 
+      app.id === selectedApplication.id 
+        ? { ...app, firstScreeningNotes: firstScreeningNotes }
+        : app
+    ));
+    
     toast({
-      title: "Notes Saved",
-      description: "Screening notes have been saved successfully.",
+      title: "First Screening Notes Saved",
+      description: "First screening notes have been saved successfully.",
+    });
+  };
+
+  // Handle saving second screening notes
+  const handleSaveSecondNotes = () => {
+    setSavedSecondNotes(secondScreeningNotes);
+    
+    // Update the application in the mock data
+    setApplications(prev => prev.map(app => 
+      app.id === selectedApplication.id 
+        ? { ...app, secondScreeningNotes: secondScreeningNotes }
+        : app
+    ));
+    
+    toast({
+      title: "Second Screening Notes Saved",
+      description: "Second screening notes have been saved successfully.",
+    });
+  };
+
+  // Handle adding new PPT link
+  const handleAddPptLink = () => {
+    if (newLinkName.trim() && newLinkUrl.trim()) {
+      const newLink = {
+        id: Date.now(),
+        name: newLinkName.trim(),
+        url: newLinkUrl.trim()
+      };
+      
+      const updatedLinks = [...pptLinks, newLink];
+      setPptLinks(updatedLinks);
+      
+      // Update the application in the mock data
+      setApplications(prev => prev.map(app => 
+        app.id === selectedApplication.id 
+          ? { ...app, pptLinks: updatedLinks }
+          : app
+      ));
+      
+      setNewLinkName("");
+      setNewLinkUrl("");
+      
+      toast({
+        title: "Link Added",
+        description: "PPT/Pitch deck link has been added successfully.",
+      });
+    }
+  };
+
+  // Handle removing PPT link
+  const handleRemovePptLink = (linkId: number) => {
+    const updatedLinks = pptLinks.filter(link => link.id !== linkId);
+    setPptLinks(updatedLinks);
+    
+    // Update the application in the mock data
+    setApplications(prev => prev.map(app => 
+      app.id === selectedApplication.id 
+        ? { ...app, pptLinks: updatedLinks }
+        : app
+    ));
+    
+    toast({
+      title: "Link Removed",
+      description: "PPT/Pitch deck link has been removed successfully.",
     });
   };
 
@@ -561,12 +679,13 @@ const Applications = () => {
       {/* Application Details Dialog */}
       {selectedApplication && (
         <Dialog open={showDetails} onOpenChange={setShowDetails}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{selectedApplication.name} - Application Details</DialogTitle>
             </DialogHeader>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Basic Information */}
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">Basic Information</h3>
                 <div className="bg-muted p-4 rounded-md space-y-3">
@@ -597,6 +716,7 @@ const Applications = () => {
                 </div>
               </div>
               
+              {/* Screening Status and Notes */}
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">Screening Status</h3>
                 <div className="bg-muted p-4 rounded-md space-y-3">
@@ -610,24 +730,46 @@ const Applications = () => {
                     <p>Jane Doe</p>
                   </div>
                   
+                  {/* First Screening Notes */}
                   <div>
-                    <h4 className="text-xs font-medium text-muted-foreground">Screening Notes</h4>
-                    <Textarea
-                      placeholder="Enter screening notes here..."
-                      value={screeningNotes}
-                      onChange={(e) => setScreeningNotes(e.target.value)}
-                      className="min-h-[80px] mb-2"
-                    />
-                    <Button onClick={handleSaveNotes} size="sm" className="mb-2">
-                      <Save size={16} className="mr-1" />
-                      Save Notes
-                    </Button>
-                    {savedNotes && (
-                      <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
-                        <h5 className="text-xs font-medium text-green-800">Screening Notes 22 (Saved)</h5>
-                        <p className="text-sm text-green-700">{savedNotes}</p>
+                    <h4 className="text-xs font-medium text-muted-foreground">First Screening Notes</h4>
+                    {savedFirstNotes ? (
+                      <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded">
+                        <h5 className="text-xs font-medium text-blue-800">Saved First Screening Notes</h5>
+                        <p className="text-sm text-blue-700">{savedFirstNotes}</p>
                       </div>
-                    )}
+                    ) : null}
+                    <Textarea
+                      placeholder="Enter first screening notes here..."
+                      value={firstScreeningNotes}
+                      onChange={(e) => setFirstScreeningNotes(e.target.value)}
+                      className="min-h-[60px] mb-2"
+                    />
+                    <Button onClick={handleSaveFirstNotes} size="sm" className="mb-2">
+                      <Save size={16} className="mr-1" />
+                      Save First Round Notes
+                    </Button>
+                  </div>
+
+                  {/* Second Screening Notes */}
+                  <div>
+                    <h4 className="text-xs font-medium text-muted-foreground">Second Screening Notes</h4>
+                    {savedSecondNotes ? (
+                      <div className="mb-2 p-2 bg-green-50 border border-green-200 rounded">
+                        <h5 className="text-xs font-medium text-green-800">Saved Second Screening Notes</h5>
+                        <p className="text-sm text-green-700">{savedSecondNotes}</p>
+                      </div>
+                    ) : null}
+                    <Textarea
+                      placeholder="Enter second screening notes here..."
+                      value={secondScreeningNotes}
+                      onChange={(e) => setSecondScreeningNotes(e.target.value)}
+                      className="min-h-[60px] mb-2"
+                    />
+                    <Button onClick={handleSaveSecondNotes} size="sm" className="mb-2">
+                      <Save size={16} className="mr-1" />
+                      Save Second Round Notes
+                    </Button>
                   </div>
                 </div>
                 
@@ -648,8 +790,75 @@ const Applications = () => {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* PPT and Pitch Deck Links */}
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">PPT & Pitch Deck Links</h3>
+                <div className="bg-muted p-4 rounded-md space-y-3">
+                  {/* Existing Links */}
+                  <div className="space-y-2">
+                    {pptLinks.length > 0 ? (
+                      pptLinks.map((link) => (
+                        <div key={link.id} className="flex items-center justify-between p-2 bg-white rounded border">
+                          <div className="flex items-center gap-2 flex-1">
+                            <Link size={16} className="text-blue-600" />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">{link.name}</p>
+                              <a 
+                                href={link.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-xs text-blue-600 hover:underline truncate block max-w-[200px]"
+                              >
+                                {link.url}
+                              </a>
+                            </div>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleRemovePptLink(link.id)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 size={14} />
+                          </Button>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No links added yet.</p>
+                    )}
+                  </div>
+
+                  {/* Add New Link */}
+                  <div className="border-t pt-3 space-y-2">
+                    <h5 className="text-xs font-medium text-muted-foreground">Add New Link</h5>
+                    <Input
+                      placeholder="Link name (e.g., Pitch Deck)"
+                      value={newLinkName}
+                      onChange={(e) => setNewLinkName(e.target.value)}
+                      className="text-sm"
+                    />
+                    <Input
+                      placeholder="URL (e.g., https://example.com/deck.pdf)"
+                      value={newLinkUrl}
+                      onChange={(e) => setNewLinkUrl(e.target.value)}
+                      className="text-sm"
+                    />
+                    <Button 
+                      onClick={handleAddPptLink} 
+                      size="sm" 
+                      className="w-full"
+                      disabled={!newLinkName.trim() || !newLinkUrl.trim()}
+                    >
+                      <Plus size={16} className="mr-1" />
+                      Add Link
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </div>
             
+            {/* Evaluation Checklist */}
             <div className="mt-4">
               <h3 className="text-sm font-medium text-muted-foreground mb-1">Evaluation Checklist</h3>
               <div className="bg-muted p-4 rounded-md">
