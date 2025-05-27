@@ -1,11 +1,11 @@
-
 import { useState } from "react";
 import { 
   Search, Filter, Check, X, Pause, ChevronDown,
-  ArrowUpDown, ArrowUp, ArrowDown
+  ArrowUpDown, ArrowUp, ArrowDown, Save
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 
 // Mock data
 const mockApplications = [
@@ -121,12 +122,25 @@ const getStatusBadge = (status: string) => {
 };
 
 const Applications = () => {
+  const { toast } = useToast();
   const [applications, setApplications] = useState(mockApplications);
   const [searchTerm, setSearchTerm] = useState("");
   const [showFilterDialog, setShowFilterDialog] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [sortConfig, setSortConfig] = useState<{key: string, direction: 'asc' | 'desc'} | null>(null);
+
+  // New state for screening notes and checklist
+  const [screeningNotes, setScreeningNotes] = useState("");
+  const [savedNotes, setSavedNotes] = useState("");
+  const [checklistItems, setChecklistItems] = useState({
+    'check-1': false,
+    'check-2': false,
+    'check-3': false,
+    'check-4': false,
+    'check-5': false,
+    'check-6': false,
+  });
 
   // Filter options
   const [filters, setFilters] = useState({
@@ -174,6 +188,34 @@ const Applications = () => {
   const handleViewDetails = (application: any) => {
     setSelectedApplication(application);
     setShowDetails(true);
+    // Reset notes and checklist when opening a new application
+    setScreeningNotes("");
+    setSavedNotes("");
+    setChecklistItems({
+      'check-1': false,
+      'check-2': false,
+      'check-3': false,
+      'check-4': false,
+      'check-5': false,
+      'check-6': false,
+    });
+  };
+
+  // Handle saving screening notes
+  const handleSaveNotes = () => {
+    setSavedNotes(screeningNotes);
+    toast({
+      title: "Notes Saved",
+      description: "Screening notes have been saved successfully.",
+    });
+  };
+
+  // Handle checklist item changes
+  const handleChecklistChange = (itemId: string, checked: boolean) => {
+    setChecklistItems(prev => ({
+      ...prev,
+      [itemId]: checked
+    }));
   };
 
   // Reset filters
@@ -519,7 +561,7 @@ const Applications = () => {
       {/* Application Details Dialog */}
       {selectedApplication && (
         <Dialog open={showDetails} onOpenChange={setShowDetails}>
-          <DialogContent className="max-w-3xl">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{selectedApplication.name} - Application Details</DialogTitle>
             </DialogHeader>
@@ -570,10 +612,22 @@ const Applications = () => {
                   
                   <div>
                     <h4 className="text-xs font-medium text-muted-foreground">Screening Notes</h4>
-                    <p className="text-sm">
-                      Good product-market fit. Team has relevant experience in the sector. 
-                      Solution addresses a clear pain point.
-                    </p>
+                    <Textarea
+                      placeholder="Enter screening notes here..."
+                      value={screeningNotes}
+                      onChange={(e) => setScreeningNotes(e.target.value)}
+                      className="min-h-[80px] mb-2"
+                    />
+                    <Button onClick={handleSaveNotes} size="sm" className="mb-2">
+                      <Save size={16} className="mr-1" />
+                      Save Notes
+                    </Button>
+                    {savedNotes && (
+                      <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
+                        <h5 className="text-xs font-medium text-green-800">Screening Notes 22 (Saved)</h5>
+                        <p className="text-sm text-green-700">{savedNotes}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
                 
@@ -601,27 +655,51 @@ const Applications = () => {
               <div className="bg-muted p-4 rounded-md">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   <div className="flex items-center gap-2">
-                    <Checkbox id="check-1" />
+                    <Checkbox 
+                      id="check-1" 
+                      checked={checklistItems['check-1']}
+                      onCheckedChange={(checked) => handleChecklistChange('check-1', checked as boolean)}
+                    />
                     <label htmlFor="check-1" className="text-sm">Founder is full-time</label>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Checkbox id="check-2" />
+                    <Checkbox 
+                      id="check-2" 
+                      checked={checklistItems['check-2']}
+                      onCheckedChange={(checked) => handleChecklistChange('check-2', checked as boolean)}
+                    />
                     <label htmlFor="check-2" className="text-sm">Problem clearly defined</label>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Checkbox id="check-3" />
+                    <Checkbox 
+                      id="check-3" 
+                      checked={checklistItems['check-3']}
+                      onCheckedChange={(checked) => handleChecklistChange('check-3', checked as boolean)}
+                    />
                     <label htmlFor="check-3" className="text-sm">Solution is validated</label>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Checkbox id="check-4" />
+                    <Checkbox 
+                      id="check-4" 
+                      checked={checklistItems['check-4']}
+                      onCheckedChange={(checked) => handleChecklistChange('check-4', checked as boolean)}
+                    />
                     <label htmlFor="check-4" className="text-sm">Clear differentiation</label>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Checkbox id="check-5" />
+                    <Checkbox 
+                      id="check-5" 
+                      checked={checklistItems['check-5']}
+                      onCheckedChange={(checked) => handleChecklistChange('check-5', checked as boolean)}
+                    />
                     <label htmlFor="check-5" className="text-sm">Large enough TAM/SAM</label>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Checkbox id="check-6" />
+                    <Checkbox 
+                      id="check-6" 
+                      checked={checklistItems['check-6']}
+                      onCheckedChange={(checked) => handleChecklistChange('check-6', checked as boolean)}
+                    />
                     <label htmlFor="check-6" className="text-sm">Strong team composition</label>
                   </div>
                 </div>
