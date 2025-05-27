@@ -1,17 +1,10 @@
 import { useState } from "react";
 import { 
-  Search, Filter, Check, X, Pause, ChevronDown,
-  ArrowUpDown, ArrowUp, ArrowDown, Save, Link, Plus, Trash2
+  Search, Check, X, Pause, ArrowUpDown, ArrowUp, ArrowDown, Save, Link, Plus, Trash2, ExternalLink
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
@@ -20,7 +13,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogClose,
 } from "@/components/ui/dialog";
 import { 
   Select,
@@ -30,7 +22,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import ApplicationFilter from "@/components/ApplicationFilter";
 
 // Mock data
 const mockApplications = [
@@ -206,7 +201,6 @@ const Applications = () => {
   const { toast } = useToast();
   const [applications, setApplications] = useState(mockApplications);
   const [searchTerm, setSearchTerm] = useState("");
-  const [showFilterDialog, setShowFilterDialog] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [sortConfig, setSortConfig] = useState<{key: string, direction: 'asc' | 'desc'} | null>(null);
@@ -233,9 +227,7 @@ const Applications = () => {
     stages: [] as string[],
     lookingFor: [] as string[],
     statuses: [] as string[],
-    fundingMin: 0,
-    fundingMax: 500000,
-    hasPriorFunding: null as boolean | null,
+    fundingRange: { min: 0, max: 10000000 },
   });
 
   // Handle sorting
@@ -360,12 +352,9 @@ const Applications = () => {
       stages: [],
       lookingFor: [],
       statuses: [],
-      fundingMin: 0,
-      fundingMax: 500000,
-      hasPriorFunding: null,
+      fundingRange: { min: 0, max: 10000000 },
     });
     setApplications(mockApplications);
-    setShowFilterDialog(false);
   };
 
   // Apply filters
@@ -393,13 +382,14 @@ const Applications = () => {
     }
     
     // Apply funding range filter
-    filtered = filtered.filter(app => {
-      const fundingAskNumber = parseInt(app.fundingAsk.replace(/[^0-9]/g, ''));
-      return fundingAskNumber >= filters.fundingMin && fundingAskNumber <= filters.fundingMax;
-    });
+    if (filters.fundingRange.min > 0 || filters.fundingRange.max < 10000000) {
+      filtered = filtered.filter(app => {
+        const fundingAskNumber = parseInt(app.fundingAsk.replace(/[^0-9]/g, ''));
+        return fundingAskNumber >= filters.fundingRange.min && fundingAskNumber <= filters.fundingRange.max;
+      });
+    }
     
     setApplications(filtered);
-    setShowFilterDialog(false);
   };
 
   // Handle search
@@ -419,7 +409,7 @@ const Applications = () => {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Startup Applications</h1>
+      <h1 className="text-3xl font-bold mb-6">Startup Applications</h1>
       
       {/* Search and Filter Bar */}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -436,10 +426,12 @@ const Applications = () => {
           </Button>
         </div>
         
-        <Button onClick={() => setShowFilterDialog(true)} variant="outline" className="flex items-center gap-2">
-          <Filter size={18} />
-          <span>Filter</span>
-        </Button>
+        <ApplicationFilter
+          filters={filters}
+          onFiltersChange={setFilters}
+          onApplyFilters={handleApplyFilters}
+          onResetFilters={handleResetFilters}
+        />
       </div>
       
       {/* Applications Table */}
@@ -502,11 +494,11 @@ const Applications = () => {
             {applications.length > 0 ? (
               applications.map((app) => (
                 <tr key={app.id}>
-                  <td>{app.name}</td>
+                  <td className="font-medium">{app.name}</td>
                   <td>{app.sector}</td>
                   <td>{app.stage}</td>
                   <td>{app.lookingFor}</td>
-                  <td>{app.fundingAsk}</td>
+                  <td className="font-semibold">{app.fundingAsk}</td>
                   <td>{app.revenue}</td>
                   <td>{getStatusBadge(app.status)}</td>
                   <td>{app.timestamp}</td>
@@ -515,8 +507,9 @@ const Applications = () => {
                       size="sm" 
                       variant="ghost" 
                       onClick={() => handleViewDetails(app)}
+                      className="text-blue-600 hover:text-blue-800"
                     >
-                      View
+                      View Details
                     </Button>
                   </td>
                 </tr>
@@ -532,295 +525,197 @@ const Applications = () => {
         </table>
       </div>
 
-      {/* Filter Dialog */}
-      {showFilterDialog && (
-        <div className="filter-dialog">
-          <div className="mb-4 flex justify-between items-center">
-            <h2 className="text-xl font-bold">Filter Options</h2>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setShowFilterDialog(false)}
-              className="text-white hover:text-white hover:bg-white/10"
-            >
-              <X />
-            </Button>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div>
-              <h3 className="text-sm font-medium mb-2">Stage</h3>
-              <div className="space-y-2">
-                {["Idea", "MVP", "Early Traction", "Growth"].map((stage) => (
-                  <div key={stage} className="flex items-center gap-2">
-                    <Checkbox 
-                      id={`stage-${stage}`} 
-                      checked={filters.stages.includes(stage)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setFilters({...filters, stages: [...filters.stages, stage]});
-                        } else {
-                          setFilters({...filters, stages: filters.stages.filter(s => s !== stage)});
-                        }
-                      }}
-                    />
-                    <label 
-                      htmlFor={`stage-${stage}`}
-                      className="text-sm cursor-pointer"
-                    >
-                      {stage}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            <div>
-              <h3 className="text-sm font-medium mb-2">Looking For</h3>
-              <div className="space-y-2">
-                {["Funding", "MVP", "Growth"].map((item) => (
-                  <div key={item} className="flex items-center gap-2">
-                    <Checkbox 
-                      id={`lookingFor-${item}`} 
-                      checked={filters.lookingFor.includes(item)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setFilters({...filters, lookingFor: [...filters.lookingFor, item]});
-                        } else {
-                          setFilters({...filters, lookingFor: filters.lookingFor.filter(i => i !== item)});
-                        }
-                      }}
-                    />
-                    <label 
-                      htmlFor={`lookingFor-${item}`}
-                      className="text-sm cursor-pointer"
-                    >
-                      {item}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            <div>
-              <h3 className="text-sm font-medium mb-2">Industry / Sector</h3>
-              <div className="space-y-2">
-                {["SaaS", "Finance", "Health", "Education", "Food", "AI"].map((sector) => (
-                  <div key={sector} className="flex items-center gap-2">
-                    <Checkbox 
-                      id={`sector-${sector}`}
-                      checked={filters.sectors.includes(sector)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setFilters({...filters, sectors: [...filters.sectors, sector]});
-                        } else {
-                          setFilters({...filters, sectors: filters.sectors.filter(s => s !== sector)});
-                        }
-                      }}
-                    />
-                    <label 
-                      htmlFor={`sector-${sector}`}
-                      className="text-sm cursor-pointer"
-                    >
-                      {sector}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            <div>
-              <h3 className="text-sm font-medium mb-2">Application Status</h3>
-              <div className="space-y-2">
-                {["NEW", "ROUND-1", "ROUND-2", "SELECTED", "REJECTED", "ON-HOLD"].map((status) => (
-                  <div key={status} className="flex items-center gap-2">
-                    <Checkbox 
-                      id={`status-${status}`}
-                      checked={filters.statuses.includes(status)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setFilters({...filters, statuses: [...filters.statuses, status]});
-                        } else {
-                          setFilters({...filters, statuses: filters.statuses.filter(s => s !== status)});
-                        }
-                      }}
-                    />
-                    <label 
-                      htmlFor={`status-${status}`}
-                      className="text-sm cursor-pointer"
-                    >
-                      {status.replace("-", " ")}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          
-          <div className="mb-6">
-            <h3 className="text-sm font-medium mb-2">Funding Amount</h3>
-            <div className="relative pt-6 pb-2">
-              <div className="h-1 w-full bg-gray-600 rounded">
-                <div 
-                  className="h-full bg-white rounded" 
-                  style={{width: `${(filters.fundingMax - filters.fundingMin) / 5000}%`}}
-                />
-              </div>
-              <div className="range-marker" style={{ left: `${filters.fundingMin / 5000}%` }}></div>
-              <div className="range-marker" style={{ left: `${filters.fundingMax / 5000}%` }}></div>
-            </div>
-            <div className="flex justify-between text-xs mt-1">
-              <span>$0</span>
-              <span>$500K</span>
-            </div>
-          </div>
-          
-          <div className="flex justify-between gap-4">
-            <Button 
-              variant="outline" 
-              onClick={handleResetFilters}
-              className="border-white/30 text-white hover:text-white hover:bg-white/10"
-            >
-              Reset Filters
-            </Button>
-            <Button 
-              onClick={handleApplyFilters}
-              className="bg-white text-black hover:bg-white/90"
-            >
-              Apply Filters
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Application Details Dialog */}
+      {/* Application Details Dialog - Sleek and Classic Design */}
       {selectedApplication && (
         <Dialog open={showDetails} onOpenChange={setShowDetails}>
-          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{selectedApplication.name} - Application Details</DialogTitle>
+          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="border-b pb-4">
+              <DialogTitle className="text-2xl font-bold flex items-center gap-3">
+                {selectedApplication.name}
+                {getStatusBadge(selectedApplication.status)}
+              </DialogTitle>
             </DialogHeader>
             
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Basic Information */}
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">Basic Information</h3>
-                <div className="bg-muted p-4 rounded-md space-y-3">
-                  <div>
-                    <h4 className="text-xs font-medium text-muted-foreground">Industry / Sector</h4>
-                    <p>{selectedApplication.sector}</p>
+            <div className="space-y-6 py-4">
+              {/* Company Overview */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Company Overview</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Industry</p>
+                      <p className="font-medium">{selectedApplication.sector}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Stage</p>
+                      <p className="font-medium">{selectedApplication.stage}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Looking For</p>
+                      <p className="font-medium">{selectedApplication.lookingFor}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Submission Date</p>
+                      <p className="font-medium">{selectedApplication.timestamp}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-xs font-medium text-muted-foreground">Stage</h4>
-                    <p>{selectedApplication.stage}</p>
+                </CardContent>
+              </Card>
+
+              {/* Financial Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Financial Information</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Funding Ask</p>
+                      <p className="text-2xl font-bold text-green-600">{selectedApplication.fundingAsk}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Current Revenue</p>
+                      <p className="text-2xl font-bold">{selectedApplication.revenue}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-xs font-medium text-muted-foreground">Looking For</h4>
-                    <p>{selectedApplication.lookingFor}</p>
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-medium text-muted-foreground">Funding Ask</h4>
-                    <p>{selectedApplication.fundingAsk}</p>
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-medium text-muted-foreground">Current Revenue</h4>
-                    <p>{selectedApplication.revenue}</p>
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-medium text-muted-foreground">Submission Date</h4>
-                    <p>{selectedApplication.timestamp}</p>
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-medium text-muted-foreground">Reviewer</h4>
-                    <p>Jane Doe</p>
-                  </div>
-                </div>
-                
-                <h3 className="text-sm font-medium text-muted-foreground mt-4 mb-1">Update Status</h3>
-                <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a new status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value="NEW">New</SelectItem>
-                      <SelectItem value="ROUND-1">Round 1 Cleared</SelectItem>
-                      <SelectItem value="ROUND-2">Round 2 Cleared</SelectItem>
-                      <SelectItem value="SELECTED">Selected</SelectItem>
-                      <SelectItem value="REJECTED">Rejected</SelectItem>
-                      <SelectItem value="ON-HOLD">On Hold</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                </CardContent>
+              </Card>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Status Management */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Status Management</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">Update Status</p>
+                      <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            <SelectItem value="NEW">New</SelectItem>
+                            <SelectItem value="ROUND-1">Round 1 Cleared</SelectItem>
+                            <SelectItem value="ROUND-2">Round 2 Cleared</SelectItem>
+                            <SelectItem value="SELECTED">Selected</SelectItem>
+                            <SelectItem value="REJECTED">Rejected</SelectItem>
+                            <SelectItem value="ON-HOLD">On Hold</SelectItem>
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">Reviewer</p>
+                      <p className="font-medium">Jane Doe</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Evaluation Checklist */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Evaluation Checklist</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {[
+                        { id: 'check-1', label: 'Founder is full-time' },
+                        { id: 'check-2', label: 'Problem clearly defined' },
+                        { id: 'check-3', label: 'Solution is validated' },
+                        { id: 'check-4', label: 'Clear differentiation' },
+                        { id: 'check-5', label: 'Large enough TAM/SAM' },
+                        { id: 'check-6', label: 'Strong team composition' },
+                      ].map((item) => (
+                        <div key={item.id} className="flex items-center space-x-2">
+                          <Checkbox 
+                            id={item.id}
+                            checked={checklistItems[item.id]}
+                            onCheckedChange={(checked) => handleChecklistChange(item.id, checked as boolean)}
+                          />
+                          <label htmlFor={item.id} className="text-sm">{item.label}</label>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
 
               {/* Notes Section */}
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">Notes</h3>
-                <div className="bg-muted p-4 rounded-md space-y-3">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Review Notes</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   {/* Existing Notes */}
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {selectedApplication.notes && selectedApplication.notes.length > 0 ? (
-                      selectedApplication.notes.map((note: any) => (
-                        <div key={note.id} className="p-2 bg-white rounded border">
+                  {selectedApplication.notes && selectedApplication.notes.length > 0 && (
+                    <div className="space-y-3">
+                      {selectedApplication.notes.map((note: any) => (
+                        <div key={note.id} className="border-l-4 border-blue-500 pl-4 py-2">
                           <div className="flex justify-between items-start mb-1">
-                            <span className="text-xs font-medium text-blue-600">{note.round}</span>
+                            <Badge variant="outline">{note.round}</Badge>
                             <span className="text-xs text-muted-foreground">{note.timestamp}</span>
                           </div>
                           <p className="text-sm">{note.content}</p>
                         </div>
-                      ))
-                    ) : (
-                      <p className="text-sm text-muted-foreground">No notes added yet.</p>
-                    )}
-                  </div>
+                      ))}
+                      <Separator />
+                    </div>
+                  )}
 
                   {/* Add New Note */}
-                  <div className="border-t pt-3 space-y-2">
-                    <h5 className="text-xs font-medium text-muted-foreground">Add New Note</h5>
-                    <Select value={noteRound} onValueChange={setNoteRound}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select round" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          <SelectItem value="First Round">First Round</SelectItem>
-                          <SelectItem value="Second Round">Second Round</SelectItem>
-                          <SelectItem value="Final Round">Final Round</SelectItem>
-                          <SelectItem value="General">General</SelectItem>
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <Select value={noteRound} onValueChange={setNoteRound}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select round" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            <SelectItem value="First Round">First Round</SelectItem>
+                            <SelectItem value="Second Round">Second Round</SelectItem>
+                            <SelectItem value="Final Round">Final Round</SelectItem>
+                            <SelectItem value="General">General</SelectItem>
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <Textarea
-                      placeholder="Enter notes here..."
+                      placeholder="Add your review notes here..."
                       value={newNote}
                       onChange={(e) => setNewNote(e.target.value)}
-                      className="min-h-[80px]"
+                      className="min-h-[100px]"
                     />
                   </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
 
-              {/* PPT and Pitch Deck Links */}
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">PPT & Pitch Deck Links</h3>
-                <div className="bg-muted p-4 rounded-md space-y-3">
+              {/* Documents & Links */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Documents & Pitch Materials</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   {/* Existing Links */}
-                  <div className="space-y-2">
-                    {pptLinks.length > 0 ? (
-                      pptLinks.map((link) => (
-                        <div key={link.id} className="flex items-center justify-between p-2 bg-white rounded border">
-                          <div className="flex items-center gap-2 flex-1">
-                            <Link size={16} className="text-blue-600" />
-                            <div className="flex-1">
-                              <p className="text-sm font-medium">{link.name}</p>
+                  {pptLinks.length > 0 && (
+                    <div className="space-y-2">
+                      {pptLinks.map((link) => (
+                        <div key={link.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <Link size={18} className="text-blue-600" />
+                            <div>
+                              <p className="font-medium">{link.name}</p>
                               <a 
                                 href={link.url} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
-                                className="text-xs text-blue-600 hover:underline truncate block max-w-[200px]"
+                                className="text-sm text-blue-600 hover:underline flex items-center gap-1"
                               >
-                                {link.url}
+                                View Document <ExternalLink size={12} />
                               </a>
                             </div>
                           </div>
@@ -830,111 +725,50 @@ const Applications = () => {
                             onClick={() => handleRemovePptLink(link.id)}
                             className="text-red-600 hover:text-red-700"
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={16} />
                           </Button>
                         </div>
-                      ))
-                    ) : (
-                      <p className="text-sm text-muted-foreground">No links added yet.</p>
-                    )}
-                  </div>
+                      ))}
+                      <Separator />
+                    </div>
+                  )}
 
                   {/* Add New Link */}
-                  <div className="border-t pt-3 space-y-2">
-                    <h5 className="text-xs font-medium text-muted-foreground">Add New Link</h5>
-                    <Input
-                      placeholder="Link name (e.g., Pitch Deck)"
-                      value={newLinkName}
-                      onChange={(e) => setNewLinkName(e.target.value)}
-                      className="text-sm"
-                    />
-                    <Input
-                      placeholder="URL (e.g., https://example.com/deck.pdf)"
-                      value={newLinkUrl}
-                      onChange={(e) => setNewLinkUrl(e.target.value)}
-                      className="text-sm"
-                    />
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <Input
+                        placeholder="Document name"
+                        value={newLinkName}
+                        onChange={(e) => setNewLinkName(e.target.value)}
+                      />
+                      <Input
+                        placeholder="Document URL"
+                        value={newLinkUrl}
+                        onChange={(e) => setNewLinkUrl(e.target.value)}
+                      />
+                    </div>
                     <Button 
                       onClick={handleAddPptLink} 
                       size="sm" 
-                      className="w-full"
                       disabled={!newLinkName.trim() || !newLinkUrl.trim()}
+                      className="w-full"
                     >
-                      <Plus size={16} className="mr-1" />
-                      Add Link
+                      <Plus size={16} className="mr-2" />
+                      Add Document
                     </Button>
                   </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             </div>
             
-            {/* Evaluation Checklist */}
-            <div className="mt-4">
-              <h3 className="text-sm font-medium text-muted-foreground mb-1">Evaluation Checklist</h3>
-              <div className="bg-muted p-4 rounded-md">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <div className="flex items-center gap-2">
-                    <Checkbox 
-                      id="check-1" 
-                      checked={checklistItems['check-1']}
-                      onCheckedChange={(checked) => handleChecklistChange('check-1', checked as boolean)}
-                    />
-                    <label htmlFor="check-1" className="text-sm">Founder is full-time</label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Checkbox 
-                      id="check-2" 
-                      checked={checklistItems['check-2']}
-                      onCheckedChange={(checked) => handleChecklistChange('check-2', checked as boolean)}
-                    />
-                    <label htmlFor="check-2" className="text-sm">Problem clearly defined</label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Checkbox 
-                      id="check-3" 
-                      checked={checklistItems['check-3']}
-                      onCheckedChange={(checked) => handleChecklistChange('check-3', checked as boolean)}
-                    />
-                    <label htmlFor="check-3" className="text-sm">Solution is validated</label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Checkbox 
-                      id="check-4" 
-                      checked={checklistItems['check-4']}
-                      onCheckedChange={(checked) => handleChecklistChange('check-4', checked as boolean)}
-                    />
-                    <label htmlFor="check-4" className="text-sm">Clear differentiation</label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Checkbox 
-                      id="check-5" 
-                      checked={checklistItems['check-5']}
-                      onCheckedChange={(checked) => handleChecklistChange('check-5', checked as boolean)}
-                    />
-                    <label htmlFor="check-5" className="text-sm">Large enough TAM/SAM</label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Checkbox 
-                      id="check-6" 
-                      checked={checklistItems['check-6']}
-                      onCheckedChange={(checked) => handleChecklistChange('check-6', checked as boolean)}
-                    />
-                    <label htmlFor="check-6" className="text-sm">Strong team composition</label>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <DialogFooter>
-              <div className="flex gap-2 justify-end w-full">
-                <Button variant="outline" onClick={() => setShowDetails(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleSaveChanges}>
-                  <Save size={16} className="mr-1" />
-                  Save All Changes
-                </Button>
-              </div>
+            <DialogFooter className="border-t pt-4">
+              <Button variant="outline" onClick={() => setShowDetails(false)}>
+                Close
+              </Button>
+              <Button onClick={handleSaveChanges}>
+                <Save size={16} className="mr-2" />
+                Save Changes
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

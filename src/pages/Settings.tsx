@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Download, Mail, FileSpreadsheet, Users, Settings as SettingsIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -172,51 +171,6 @@ Robotics AI,AI,MVP,Growth,$500000,$5000,ON-HOLD,2023-04-01`;
                 <div className="text-2xl font-bold text-red-600">1</div>
                 <div className="text-sm text-muted-foreground">Rejected</div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* User Preferences */}
-        <Card>
-          <CardHeader>
-            <CardTitle>User Preferences</CardTitle>
-            <CardDescription>
-              Customize your dashboard experience
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-medium">Email Notifications</h4>
-                <p className="text-sm text-muted-foreground">Receive email updates for new applications</p>
-              </div>
-              <Button variant="outline" size="sm">
-                Configure
-              </Button>
-            </div>
-            
-            <Separator />
-            
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-medium">Dashboard Layout</h4>
-                <p className="text-sm text-muted-foreground">Customize the dashboard view</p>
-              </div>
-              <Button variant="outline" size="sm">
-                Customize
-              </Button>
-            </div>
-            
-            <Separator />
-            
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-medium">Data Retention</h4>
-                <p className="text-sm text-muted-foreground">Manage how long application data is stored</p>
-              </div>
-              <Button variant="outline" size="sm">
-                Manage
-              </Button>
             </div>
           </CardContent>
         </Card>

@@ -6,29 +6,34 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/componen
 import { toast } from "sonner";
 
 interface LoginProps {
-  onLogin: () => void;
+  onLogin: (username: string) => void;
 }
 
 const Login = ({ onLogin }: LoginProps) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Basic validation
     if (!username || !password) {
       toast.error("Please enter both username and password");
       return;
     }
     
-    // Demo credentials check
-    if (username === "admin" && password === "password") {
-      toast.success("Login successful");
-      onLogin();
-    } else {
-      toast.error("Invalid credentials");
-    }
+    setIsLoading(true);
+    
+    // Simulate API call delay
+    setTimeout(() => {
+      if (username === "admin" && password === "password") {
+        toast.success("Login successful");
+        onLogin(username);
+      } else {
+        toast.error("Invalid credentials");
+        setIsLoading(false);
+      }
+    }, 1000);
   };
 
   return (
@@ -53,6 +58,7 @@ const Login = ({ onLogin }: LoginProps) => {
                   placeholder="Enter your username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
+                  disabled={isLoading}
                 />
               </div>
               
@@ -64,6 +70,7 @@ const Login = ({ onLogin }: LoginProps) => {
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
                 />
                 <p className="text-sm text-muted-foreground text-right">
                   <a href="#" className="hover:underline">Forgot password?</a>
@@ -72,8 +79,8 @@ const Login = ({ onLogin }: LoginProps) => {
             </CardContent>
             
             <CardFooter>
-              <Button type="submit" className="w-full">
-                Login
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Signing in..." : "Login"}
               </Button>
             </CardFooter>
           </form>
