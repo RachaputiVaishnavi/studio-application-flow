@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Applications from "./pages/Applications";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import DashboardLayout from "./components/layouts/DashboardLayout";
 
@@ -61,6 +62,7 @@ const App = () => {
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="applications" element={<Applications />} />
+              <Route path="settings" element={<Settings />} />
             </Route>
             
             <Route path="*" element={<NotFound />} />

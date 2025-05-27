@@ -44,8 +44,9 @@ const mockApplications = [
     revenue: "$10,000", 
     fundingAsk: "$250,000", 
     timestamp: "2023-01-15",
-    firstScreeningNotes: "Strong technical team with good market understanding. MVP shows promise.",
-    secondScreeningNotes: "",
+    notes: [
+      { id: 1, round: "First Round", content: "Strong technical team with good market understanding. MVP shows promise.", timestamp: "2023-01-16" }
+    ],
     pptLinks: [
       { id: 1, name: "Business Plan PPT", url: "https://example.com/cloudnet-business-plan.pptx" },
       { id: 2, name: "Product Demo", url: "https://example.com/cloudnet-demo.pdf" }
@@ -69,8 +70,10 @@ const mockApplications = [
     revenue: "$25,000", 
     fundingAsk: "$300,000", 
     timestamp: "2023-02-10",
-    firstScreeningNotes: "Impressive user growth and solid financial projections. Team has relevant experience.",
-    secondScreeningNotes: "Due diligence shows strong compliance framework. Ready for Series A.",
+    notes: [
+      { id: 1, round: "First Round", content: "Impressive user growth and solid financial projections. Team has relevant experience.", timestamp: "2023-02-11" },
+      { id: 2, round: "Second Round", content: "Due diligence shows strong compliance framework. Ready for Series A.", timestamp: "2023-02-15" }
+    ],
     pptLinks: [
       { id: 1, name: "Pitch Deck", url: "https://example.com/fintech-pitch.pdf" }
     ],
@@ -93,8 +96,7 @@ const mockApplications = [
     revenue: "$0", 
     fundingAsk: "$150,000", 
     timestamp: "2023-03-05",
-    firstScreeningNotes: "",
-    secondScreeningNotes: "",
+    notes: [],
     pptLinks: [],
     checklistItems: {
       'check-1': false,
@@ -115,8 +117,9 @@ const mockApplications = [
     revenue: "$15,000", 
     fundingAsk: "$200,000", 
     timestamp: "2023-03-15",
-    firstScreeningNotes: "Innovative approach to online learning. Strong pilot results.",
-    secondScreeningNotes: "",
+    notes: [
+      { id: 1, round: "First Round", content: "Innovative approach to online learning. Strong pilot results.", timestamp: "2023-03-16" }
+    ],
     pptLinks: [
       { id: 1, name: "Product Overview", url: "https://example.com/edtech-overview.pptx" }
     ],
@@ -139,8 +142,9 @@ const mockApplications = [
     revenue: "$0", 
     fundingAsk: "$100,000", 
     timestamp: "2023-03-20",
-    firstScreeningNotes: "Concept needs more validation. Limited market research provided.",
-    secondScreeningNotes: "",
+    notes: [
+      { id: 1, round: "First Round", content: "Concept needs more validation. Limited market research provided.", timestamp: "2023-03-21" }
+    ],
     pptLinks: [],
     checklistItems: {
       'check-1': false,
@@ -161,8 +165,9 @@ const mockApplications = [
     revenue: "$5,000", 
     fundingAsk: "$500,000", 
     timestamp: "2023-04-01",
-    firstScreeningNotes: "Cutting-edge technology but high execution risk. Team needs strengthening.",
-    secondScreeningNotes: "",
+    notes: [
+      { id: 1, round: "First Round", content: "Cutting-edge technology but high execution risk. Team needs strengthening.", timestamp: "2023-04-02" }
+    ],
     pptLinks: [
       { id: 1, name: "Technical Demo", url: "https://example.com/robotics-tech-demo.pdf" },
       { id: 2, name: "Market Analysis", url: "https://example.com/robotics-market.pptx" }
@@ -206,17 +211,12 @@ const Applications = () => {
   const [showDetails, setShowDetails] = useState(false);
   const [sortConfig, setSortConfig] = useState<{key: string, direction: 'asc' | 'desc'} | null>(null);
 
-  // Enhanced state for screening notes
-  const [firstScreeningNotes, setFirstScreeningNotes] = useState("");
-  const [secondScreeningNotes, setSecondScreeningNotes] = useState("");
-  const [savedFirstNotes, setSavedFirstNotes] = useState("");
-  const [savedSecondNotes, setSavedSecondNotes] = useState("");
-  
-  // State for PPT links
+  // State for editing
+  const [newNote, setNewNote] = useState("");
+  const [noteRound, setNoteRound] = useState("First Round");
   const [pptLinks, setPptLinks] = useState<{id: number, name: string, url: string}[]>([]);
   const [newLinkName, setNewLinkName] = useState("");
   const [newLinkUrl, setNewLinkUrl] = useState("");
-  
   const [checklistItems, setChecklistItems] = useState({
     'check-1': false,
     'check-2': false,
@@ -225,6 +225,7 @@ const Applications = () => {
     'check-5': false,
     'check-6': false,
   });
+  const [selectedStatus, setSelectedStatus] = useState("");
 
   // Filter options
   const [filters, setFilters] = useState({
@@ -273,18 +274,12 @@ const Applications = () => {
     setSelectedApplication(application);
     setShowDetails(true);
     
-    // Load existing notes
-    setFirstScreeningNotes("");
-    setSecondScreeningNotes("");
-    setSavedFirstNotes(application.firstScreeningNotes || "");
-    setSavedSecondNotes(application.secondScreeningNotes || "");
-    
-    // Load PPT links
+    // Reset form states
+    setNewNote("");
+    setNoteRound("First Round");
     setPptLinks(application.pptLinks || []);
     setNewLinkName("");
     setNewLinkUrl("");
-    
-    // Load existing checklist items
     setChecklistItems(application.checklistItems || {
       'check-1': false,
       'check-2': false,
@@ -293,40 +288,7 @@ const Applications = () => {
       'check-5': false,
       'check-6': false,
     });
-  };
-
-  // Handle saving first screening notes
-  const handleSaveFirstNotes = () => {
-    setSavedFirstNotes(firstScreeningNotes);
-    
-    // Update the application in the mock data
-    setApplications(prev => prev.map(app => 
-      app.id === selectedApplication.id 
-        ? { ...app, firstScreeningNotes: firstScreeningNotes }
-        : app
-    ));
-    
-    toast({
-      title: "First Screening Notes Saved",
-      description: "First screening notes have been saved successfully.",
-    });
-  };
-
-  // Handle saving second screening notes
-  const handleSaveSecondNotes = () => {
-    setSavedSecondNotes(secondScreeningNotes);
-    
-    // Update the application in the mock data
-    setApplications(prev => prev.map(app => 
-      app.id === selectedApplication.id 
-        ? { ...app, secondScreeningNotes: secondScreeningNotes }
-        : app
-    ));
-    
-    toast({
-      title: "Second Screening Notes Saved",
-      description: "Second screening notes have been saved successfully.",
-    });
+    setSelectedStatus(application.status);
   };
 
   // Handle adding new PPT link
@@ -338,120 +300,56 @@ const Applications = () => {
         url: newLinkUrl.trim()
       };
       
-      const updatedLinks = [...pptLinks, newLink];
-      setPptLinks(updatedLinks);
-      
-      // Update the application in the mock data
-      setApplications(prev => prev.map(app => 
-        app.id === selectedApplication.id 
-          ? { ...app, pptLinks: updatedLinks }
-          : app
-      ));
-      
+      setPptLinks([...pptLinks, newLink]);
       setNewLinkName("");
       setNewLinkUrl("");
-      
-      toast({
-        title: "Link Added",
-        description: "PPT/Pitch deck link has been added successfully.",
-      });
     }
   };
 
   // Handle removing PPT link
   const handleRemovePptLink = (linkId: number) => {
-    const updatedLinks = pptLinks.filter(link => link.id !== linkId);
-    setPptLinks(updatedLinks);
-    
-    // Update the application in the mock data
-    setApplications(prev => prev.map(app => 
-      app.id === selectedApplication.id 
-        ? { ...app, pptLinks: updatedLinks }
-        : app
-    ));
-    
-    toast({
-      title: "Link Removed",
-      description: "PPT/Pitch deck link has been removed successfully.",
-    });
+    setPptLinks(pptLinks.filter(link => link.id !== linkId));
   };
 
-  // Handle checklist item changes with persistence
+  // Handle checklist item changes
   const handleChecklistChange = (itemId: string, checked: boolean) => {
-    const updatedChecklistItems = {
+    setChecklistItems({
       ...checklistItems,
       [itemId]: checked
+    });
+  };
+
+  // Handle save all changes
+  const handleSaveChanges = () => {
+    const updatedApplicationData = {
+      ...selectedApplication,
+      status: selectedStatus,
+      pptLinks: pptLinks,
+      checklistItems: checklistItems,
+      notes: newNote.trim() 
+        ? [...(selectedApplication.notes || []), {
+            id: Date.now(),
+            round: noteRound,
+            content: newNote.trim(),
+            timestamp: new Date().toISOString().split('T')[0]
+          }]
+        : selectedApplication.notes || []
     };
-    
-    setChecklistItems(updatedChecklistItems);
-    
-    // Update the application in the mock data
+
+    // Update the application in the state
     setApplications(prev => prev.map(app => 
-      app.id === selectedApplication.id 
-        ? { ...app, checklistItems: updatedChecklistItems }
-        : app
+      app.id === selectedApplication.id ? updatedApplicationData : app
     ));
-    
-    // Update the selected application state
-    setSelectedApplication(prev => ({
-      ...prev,
-      checklistItems: updatedChecklistItems
-    }));
-    
-    toast({
-      title: "Checklist Updated",
-      description: "Evaluation checklist item has been saved.",
-    });
-  };
 
-  // Handle approve button click
-  const handleApprove = () => {
-    const updatedApplications = applications.map(app => 
-      app.id === selectedApplication.id 
-        ? { ...app, status: "SELECTED" }
-        : app
-    );
-    
-    setApplications(updatedApplications);
-    setSelectedApplication(prev => ({ ...prev, status: "SELECTED" }));
-    
-    toast({
-      title: "Application Approved",
-      description: `${selectedApplication.name} has been approved and status updated to Selected.`,
-    });
-  };
+    // Update selected application
+    setSelectedApplication(updatedApplicationData);
 
-  // Handle reject button click
-  const handleReject = () => {
-    const updatedApplications = applications.map(app => 
-      app.id === selectedApplication.id 
-        ? { ...app, status: "REJECTED" }
-        : app
-    );
-    
-    setApplications(updatedApplications);
-    setSelectedApplication(prev => ({ ...prev, status: "REJECTED" }));
-    
-    toast({
-      title: "Application Rejected",
-      description: `${selectedApplication.name} has been rejected and status updated.`,
-    });
-  };
+    // Reset new note
+    setNewNote("");
 
-  // Handle hold button click
-  const handleHold = () => {
-    const updatedApplications = applications.map(app => 
-      app.id === selectedApplication.id 
-        ? { ...app, status: "ON-HOLD" }
-        : app
-    );
-    
-    setApplications(updatedApplications);
-    setSelectedApplication(prev => ({ ...prev, status: "ON-HOLD" }));
-    
     toast({
-      title: "Application On Hold",
-      description: `${selectedApplication.name} has been put on hold.`,
+      title: "Changes Saved",
+      description: "All application changes have been saved successfully.",
     });
   };
 
@@ -832,68 +730,14 @@ const Applications = () => {
                     <h4 className="text-xs font-medium text-muted-foreground">Submission Date</h4>
                     <p>{selectedApplication.timestamp}</p>
                   </div>
-                </div>
-              </div>
-              
-              {/* Screening Status and Notes */}
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">Screening Status</h3>
-                <div className="bg-muted p-4 rounded-md space-y-3">
-                  <div>
-                    <h4 className="text-xs font-medium text-muted-foreground">Current Status</h4>
-                    <p>{getStatusBadge(selectedApplication.status)}</p>
-                  </div>
-                  
                   <div>
                     <h4 className="text-xs font-medium text-muted-foreground">Reviewer</h4>
                     <p>Jane Doe</p>
                   </div>
-                  
-                  {/* First Screening Notes */}
-                  <div>
-                    <h4 className="text-xs font-medium text-muted-foreground">First Screening Notes</h4>
-                    {savedFirstNotes ? (
-                      <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded">
-                        <h5 className="text-xs font-medium text-blue-800">Saved First Screening Notes</h5>
-                        <p className="text-sm text-blue-700">{savedFirstNotes}</p>
-                      </div>
-                    ) : null}
-                    <Textarea
-                      placeholder="Enter first screening notes here..."
-                      value={firstScreeningNotes}
-                      onChange={(e) => setFirstScreeningNotes(e.target.value)}
-                      className="min-h-[60px] mb-2"
-                    />
-                    <Button onClick={handleSaveFirstNotes} size="sm" className="mb-2">
-                      <Save size={16} className="mr-1" />
-                      Save First Round Notes
-                    </Button>
-                  </div>
-
-                  {/* Second Screening Notes */}
-                  <div>
-                    <h4 className="text-xs font-medium text-muted-foreground">Second Screening Notes</h4>
-                    {savedSecondNotes ? (
-                      <div className="mb-2 p-2 bg-green-50 border border-green-200 rounded">
-                        <h5 className="text-xs font-medium text-green-800">Saved Second Screening Notes</h5>
-                        <p className="text-sm text-green-700">{savedSecondNotes}</p>
-                      </div>
-                    ) : null}
-                    <Textarea
-                      placeholder="Enter second screening notes here..."
-                      value={secondScreeningNotes}
-                      onChange={(e) => setSecondScreeningNotes(e.target.value)}
-                      className="min-h-[60px] mb-2"
-                    />
-                    <Button onClick={handleSaveSecondNotes} size="sm" className="mb-2">
-                      <Save size={16} className="mr-1" />
-                      Save Second Round Notes
-                    </Button>
-                  </div>
                 </div>
                 
                 <h3 className="text-sm font-medium text-muted-foreground mt-4 mb-1">Update Status</h3>
-                <Select>
+                <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select a new status" />
                   </SelectTrigger>
@@ -908,6 +752,53 @@ const Applications = () => {
                     </SelectGroup>
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Notes Section */}
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">Notes</h3>
+                <div className="bg-muted p-4 rounded-md space-y-3">
+                  {/* Existing Notes */}
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {selectedApplication.notes && selectedApplication.notes.length > 0 ? (
+                      selectedApplication.notes.map((note: any) => (
+                        <div key={note.id} className="p-2 bg-white rounded border">
+                          <div className="flex justify-between items-start mb-1">
+                            <span className="text-xs font-medium text-blue-600">{note.round}</span>
+                            <span className="text-xs text-muted-foreground">{note.timestamp}</span>
+                          </div>
+                          <p className="text-sm">{note.content}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No notes added yet.</p>
+                    )}
+                  </div>
+
+                  {/* Add New Note */}
+                  <div className="border-t pt-3 space-y-2">
+                    <h5 className="text-xs font-medium text-muted-foreground">Add New Note</h5>
+                    <Select value={noteRound} onValueChange={setNoteRound}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select round" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectItem value="First Round">First Round</SelectItem>
+                          <SelectItem value="Second Round">Second Round</SelectItem>
+                          <SelectItem value="Final Round">Final Round</SelectItem>
+                          <SelectItem value="General">General</SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    <Textarea
+                      placeholder="Enter notes here..."
+                      value={newNote}
+                      onChange={(e) => setNewNote(e.target.value)}
+                      className="min-h-[80px]"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* PPT and Pitch Deck Links */}
@@ -1036,17 +927,12 @@ const Applications = () => {
             
             <DialogFooter>
               <div className="flex gap-2 justify-end w-full">
-                <Button variant="outline" size="sm" onClick={handleReject}>
-                  <X size={16} className="mr-1" />
-                  Reject
+                <Button variant="outline" onClick={() => setShowDetails(false)}>
+                  Cancel
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleHold}>
-                  <Pause size={16} className="mr-1" />
-                  Hold
-                </Button>
-                <Button size="sm" onClick={handleApprove}>
-                  <Check size={16} className="mr-1" />
-                  Approve
+                <Button onClick={handleSaveChanges}>
+                  <Save size={16} className="mr-1" />
+                  Save All Changes
                 </Button>
               </div>
             </DialogFooter>
