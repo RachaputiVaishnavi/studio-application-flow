@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Search, Check, X, Pause, ArrowUpDown, ArrowUp, ArrowDown, Save, Link, Plus, Trash2, ExternalLink
 } from "lucide-react";
@@ -26,200 +26,106 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import ApplicationFilter from "@/components/ApplicationFilter";
+import { formApi, evaluationApi } from "@/services/api";
 
-// Mock data
-const mockApplications = [
-  { 
-    id: 1, 
-    name: "Cloudnet", 
-    sector: "SaaS", 
-    stage: "MVP", 
-    lookingFor: "Funding", 
-    status: "ROUND-1",
-    revenue: "$10,000", 
-    fundingAsk: "$250,000", 
-    timestamp: "2023-01-15",
-    notes: [
-      { id: 1, round: "First Round", content: "Strong technical team with good market understanding. MVP shows promise.", timestamp: "2023-01-16" }
-    ],
-    pptLinks: [
-      { id: 1, name: "Business Plan PPT", url: "https://example.com/cloudnet-business-plan.pptx" },
-      { id: 2, name: "Product Demo", url: "https://example.com/cloudnet-demo.pdf" }
-    ],
-    checklistItems: {
-      'check-1': false,
-      'check-2': false,
-      'check-3': false,
-      'check-4': false,
-      'check-5': false,
-      'check-6': false,
-    }
-  },
-  { 
-    id: 2, 
-    name: "Fintech", 
-    sector: "Finance", 
-    stage: "Early Traction", 
-    lookingFor: "MVP", 
-    status: "ROUND-2",
-    revenue: "$25,000", 
-    fundingAsk: "$300,000", 
-    timestamp: "2023-02-10",
-    notes: [
-      { id: 1, round: "First Round", content: "Impressive user growth and solid financial projections. Team has relevant experience.", timestamp: "2023-02-11" },
-      { id: 2, round: "Second Round", content: "Due diligence shows strong compliance framework. Ready for Series A.", timestamp: "2023-02-15" }
-    ],
-    pptLinks: [
-      { id: 1, name: "Pitch Deck", url: "https://example.com/fintech-pitch.pdf" }
-    ],
-    checklistItems: {
-      'check-1': true,
-      'check-2': true,
-      'check-3': false,
-      'check-4': false,
-      'check-5': false,
-      'check-6': false,
-    }
-  },
-  { 
-    id: 3, 
-    name: "Health App", 
-    sector: "Health", 
-    stage: "MVP", 
-    lookingFor: "Growth", 
-    status: "NEW",
-    revenue: "$0", 
-    fundingAsk: "$150,000", 
-    timestamp: "2023-03-05",
-    notes: [],
-    pptLinks: [],
-    checklistItems: {
-      'check-1': false,
-      'check-2': false,
-      'check-3': false,
-      'check-4': false,
-      'check-5': false,
-      'check-6': false,
-    }
-  },
-  { 
-    id: 4, 
-    name: "EdTech Solution", 
-    sector: "Education", 
-    stage: "Early Traction", 
-    lookingFor: "Funding", 
-    status: "SELECTED",
-    revenue: "$15,000", 
-    fundingAsk: "$200,000", 
-    timestamp: "2023-03-15",
-    notes: [
-      { id: 1, round: "First Round", content: "Innovative approach to online learning. Strong pilot results.", timestamp: "2023-03-16" }
-    ],
-    pptLinks: [
-      { id: 1, name: "Product Overview", url: "https://example.com/edtech-overview.pptx" }
-    ],
-    checklistItems: {
-      'check-1': true,
-      'check-2': true,
-      'check-3': true,
-      'check-4': true,
-      'check-5': true,
-      'check-6': true,
-    }
-  },
-  { 
-    id: 5, 
-    name: "Foodtech", 
-    sector: "Food", 
-    stage: "Idea", 
-    lookingFor: "MVP", 
-    status: "REJECTED",
-    revenue: "$0", 
-    fundingAsk: "$100,000", 
-    timestamp: "2023-03-20",
-    notes: [
-      { id: 1, round: "First Round", content: "Concept needs more validation. Limited market research provided.", timestamp: "2023-03-21" }
-    ],
-    pptLinks: [],
-    checklistItems: {
-      'check-1': false,
-      'check-2': false,
-      'check-3': false,
-      'check-4': false,
-      'check-5': false,
-      'check-6': false,
-    }
-  },
-  { 
-    id: 6, 
-    name: "Robotics AI", 
-    sector: "AI", 
-    stage: "MVP", 
-    lookingFor: "Growth", 
-    status: "ON-HOLD",
-    revenue: "$5,000", 
-    fundingAsk: "$500,000", 
-    timestamp: "2023-04-01",
-    notes: [
-      { id: 1, round: "First Round", content: "Cutting-edge technology but high execution risk. Team needs strengthening.", timestamp: "2023-04-02" }
-    ],
-    pptLinks: [
-      { id: 1, name: "Technical Demo", url: "https://example.com/robotics-tech-demo.pdf" },
-      { id: 2, name: "Market Analysis", url: "https://example.com/robotics-market.pptx" }
-    ],
-    checklistItems: {
-      'check-1': false,
-      'check-2': false,
-      'check-3': false,
-      'check-4': false,
-      'check-5': false,
-      'check-6': false,
-    }
-  },
-];
-
-// Status badge mapping
 const getStatusBadge = (status: string) => {
-  const statusMap: Record<string, { label: string, className: string }> = {
-    'NEW': { label: 'New', className: 'status-badge status-new' },
-    'ROUND-1': { label: 'Round 1 Cleared', className: 'status-badge status-round1' },
-    'ROUND-2': { label: 'Round 2 Cleared', className: 'status-badge status-round2' },
-    'SELECTED': { label: 'Selected', className: 'status-badge status-selected' },
-    'REJECTED': { label: 'Rejected', className: 'status-badge status-rejected' },
-    'ON-HOLD': { label: 'On Hold', className: 'status-badge status-hold' },
+  const statusConfig = {
+    'On Hold': { label: 'On Hold', variant: 'warning' },
+    'Round 1 Cleared': { label: 'Round 1 Cleared', variant: 'secondary' },
+    'Round 2 Cleared': { label: 'Round 2 Cleared', variant: 'secondary' },
+    'Selected': { label: 'Selected', variant: 'success' },
+    'Rejected': { label: 'Rejected', variant: 'destructive' },
   };
 
-  const status_info = statusMap[status] || { label: status, className: 'status-badge' };
+  const config = statusConfig[status as keyof typeof statusConfig] || statusConfig['On Hold'];
+  
   return (
-    <span className={status_info.className}>
-      {status_info.label}
-    </span>
+    <Badge variant={config.variant as any}>
+      {config.label}
+    </Badge>
   );
 };
 
+// Types for our data
+interface FormData {
+  _id: string;
+  projectId: string;
+  role: string;
+  fullName: string;
+  phoneNumber: string;
+  emailAddress: string;
+  country: string;
+  city: string;
+  startupName: string;
+  websiteURL: string;
+  currentState: string;
+  lookingFor: string;
+  companyLinkedIn: string;
+  foundersLinkedIn: string;
+  industry: string;
+  problemSolved: string;
+  startupDescription: string;
+  targetMarket: string;
+  numberOfCustomers: number;
+  revenueCurrency: string;
+  revenueAmount: number;
+  raisedFunding: boolean;
+  fundingCurrency: string;
+  fundingAmount: number;
+  heardFrom: string;
+  additionalInfo: string;
+  pitchDeck: string;
+  submissionDate: string;
+}
+
+interface EvaluationData {
+  _id: string;
+  projectId: string;
+  projectStatus: string;
+  roundNotes: {
+    firstRound: string;
+    secondRound: string;
+    thirdRound: string;
+    generalNotes: string;
+  };
+  additionalDocuments: Array<{
+    _id: string;
+    name: string;
+    url: string;
+    type: string;
+  }>;
+  evaluationChecklist: Array<{
+    _id: string;
+    name: string;
+    checked: boolean;
+    notes: string;
+  }>;
+  lastUpdated: string;
+}
+
 const Applications = () => {
   const { toast } = useToast();
-  const [applications, setApplications] = useState(mockApplications);
+  const [applications, setApplications] = useState<FormData[]>([]);
+  const [evaluations, setEvaluations] = useState<Record<string, EvaluationData>>({});
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedApplication, setSelectedApplication] = useState<any>(null);
+  const [selectedApplication, setSelectedApplication] = useState<FormData | null>(null);
+  const [selectedEvaluation, setSelectedEvaluation] = useState<EvaluationData | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [sortConfig, setSortConfig] = useState<{key: string, direction: 'asc' | 'desc'} | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [hasChanges, setHasChanges] = useState(false);
 
   // State for editing
   const [newNote, setNewNote] = useState("");
-  const [noteRound, setNoteRound] = useState("First Round");
-  const [pptLinks, setPptLinks] = useState<{id: number, name: string, url: string}[]>([]);
+  const [noteRound, setNoteRound] = useState("firstRound");
   const [newLinkName, setNewLinkName] = useState("");
   const [newLinkUrl, setNewLinkUrl] = useState("");
-  const [checklistItems, setChecklistItems] = useState({
-    'check-1': false,
-    'check-2': false,
-    'check-3': false,
-    'check-4': false,
-    'check-5': false,
-    'check-6': false,
-  });
-  const [selectedStatus, setSelectedStatus] = useState("");
+  const [pendingChanges, setPendingChanges] = useState<{
+    status?: string;
+    roundNotes?: Record<string, string>;
+    checklist?: Array<{ _id: string; checked: boolean; notes?: string }>;
+    documents?: Array<{ name: string; url: string; type: string } | { _id: string; remove: true }>;
+  }>({});
 
   // Filter options
   const [filters, setFilters] = useState({
@@ -229,6 +135,41 @@ const Applications = () => {
     statuses: [] as string[],
     fundingRange: { min: 0, max: 10000000 },
   });
+
+  // Fetch data on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [formsResponse, evaluationsResponse] = await Promise.all([
+          formApi.getForms(),
+          evaluationApi.getEvaluations()
+        ]);
+
+        const formsData = formsResponse.data.data;
+        const evaluationsData = evaluationsResponse.data.data;
+
+        // Convert evaluations array to object with projectId as key
+        const evaluationsMap = evaluationsData.reduce((acc: Record<string, EvaluationData>, evaluation: EvaluationData) => {
+          acc[evaluation.projectId] = evaluation;
+          return acc;
+        }, {});
+
+        setApplications(formsData);
+        setEvaluations(evaluationsMap);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch applications data",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   // Handle sorting
   const requestSort = (key: string) => {
@@ -262,87 +203,184 @@ const Applications = () => {
   };
 
   // Handle application selection
-  const handleViewDetails = (application: any) => {
+  const handleViewDetails = async (application: FormData) => {
     setSelectedApplication(application);
+    setSelectedEvaluation(evaluations[application.projectId] || null);
     setShowDetails(true);
     
     // Reset form states
     setNewNote("");
-    setNoteRound("First Round");
-    setPptLinks(application.pptLinks || []);
+    setNoteRound("firstRound");
     setNewLinkName("");
     setNewLinkUrl("");
-    setChecklistItems(application.checklistItems || {
-      'check-1': false,
-      'check-2': false,
-      'check-3': false,
-      'check-4': false,
-      'check-5': false,
-      'check-6': false,
-    });
-    setSelectedStatus(application.status);
   };
 
-  // Handle adding new PPT link
-  const handleAddPptLink = () => {
-    if (newLinkName.trim() && newLinkUrl.trim()) {
-      const newLink = {
-        id: Date.now(),
-        name: newLinkName.trim(),
-        url: newLinkUrl.trim()
+  // Handle status update
+  const handleStatusUpdate = (status: string) => {
+    if (!selectedApplication) return;
+    console.log('Status update:', { status, projectId: selectedApplication.projectId });
+    
+    // Update local state immediately for better UX
+    setEvaluations(prev => {
+      const currentEvaluation = prev[selectedApplication.projectId];
+      if (!currentEvaluation) return prev;
+
+      const updatedEvaluation = {
+        ...currentEvaluation,
+        projectStatus: status
       };
+
+      // Update selected evaluation as well
+      setSelectedEvaluation(updatedEvaluation);
+
+      return {
+        ...prev,
+        [selectedApplication.projectId]: updatedEvaluation
+      };
+    });
+
+    setPendingChanges(prev => ({ ...prev, status }));
+    setHasChanges(true);
+  };
+
+  // Handle checklist update
+  const handleChecklistUpdate = (checklistId: string, checked: boolean, notes?: string) => {
+    if (!selectedApplication) return;
+    setPendingChanges(prev => ({
+      ...prev,
+      checklist: [...(prev.checklist || []), { _id: checklistId, checked, notes }]
+    }));
+    setHasChanges(true);
+  };
+
+  // Handle round notes update
+  const handleRoundNotesUpdate = (round: string, notes: string) => {
+    if (!selectedApplication) return;
+    console.log('Notes update:', { round, notes, projectId: selectedApplication.projectId });
+    
+    // Update local state immediately for better UX
+    setEvaluations(prev => {
+      const currentEvaluation = prev[selectedApplication.projectId];
+      if (!currentEvaluation) return prev;
+
+      const updatedEvaluation = {
+        ...currentEvaluation,
+        roundNotes: {
+          ...currentEvaluation.roundNotes,
+          [round]: notes
+        }
+      };
+
+      // Update selected evaluation as well
+      setSelectedEvaluation(updatedEvaluation);
+
+      return {
+        ...prev,
+        [selectedApplication.projectId]: updatedEvaluation
+      };
+    });
+
+    setPendingChanges(prev => ({
+      ...prev,
+      roundNotes: { ...(prev.roundNotes || {}), [round]: notes }
+    }));
+    setHasChanges(true);
+
+    // Clear the input after adding note
+    setNewNote("");
+  };
+
+  // Handle document operations
+  const handleAddDocument = (document: { name: string, url: string, type: string }) => {
+    if (!selectedApplication) return;
+    setPendingChanges(prev => ({
+      ...prev,
+      documents: [...(prev.documents || []), document]
+    }));
+    setHasChanges(true);
+  };
+
+  const handleRemoveDocument = (documentId: string) => {
+    if (!selectedApplication) return;
+    setPendingChanges(prev => ({
+      ...prev,
+      documents: [...(prev.documents || []), { _id: documentId, remove: true }]
+    }));
+    setHasChanges(true);
+  };
+
+  // Save all changes
+  const handleSaveChanges = async () => {
+    if (!selectedApplication || !hasChanges) return;
+
+    console.log('Saving changes:', {
+      projectId: selectedApplication.projectId,
+      pendingChanges
+    });
+
+    try {
+      const response = await evaluationApi.updateEvaluation(selectedApplication.projectId, pendingChanges);
+      console.log('Save response:', response.data);
       
-      setPptLinks([...pptLinks, newLink]);
+      // Update local state with the response data
+      setEvaluations(prev => {
+        const currentEvaluation = prev[selectedApplication.projectId];
+        if (!currentEvaluation) return prev;
+
+        const updatedEvaluation: EvaluationData = {
+          ...currentEvaluation,
+          projectStatus: pendingChanges.status || currentEvaluation.projectStatus,
+          roundNotes: {
+            ...currentEvaluation.roundNotes,
+            ...(pendingChanges.roundNotes || {})
+          },
+          evaluationChecklist: pendingChanges.checklist 
+            ? currentEvaluation.evaluationChecklist.map(item => {
+                const update = pendingChanges.checklist?.find(u => u._id === item._id);
+                return update ? { ...item, ...update } : item;
+              })
+            : currentEvaluation.evaluationChecklist,
+          additionalDocuments: pendingChanges.documents
+            ? [
+                ...currentEvaluation.additionalDocuments.filter(doc => 
+                  !pendingChanges.documents?.some(d => 
+                    'remove' in d && d._id === doc._id
+                  )
+                ),
+                ...(pendingChanges.documents
+                  .filter((doc): doc is { name: string; url: string; type: string } => !('remove' in doc))
+                  .map(doc => ({ ...doc, _id: Math.random().toString() }))
+                )
+              ]
+            : currentEvaluation.additionalDocuments,
+          lastUpdated: new Date().toISOString()
+        };
+
+        return {
+          ...prev,
+          [selectedApplication.projectId]: updatedEvaluation
+        };
+      });
+
+      // Reset changes
+      setPendingChanges({});
+      setHasChanges(false);
+    setNewNote("");
       setNewLinkName("");
       setNewLinkUrl("");
-    }
-  };
-
-  // Handle removing PPT link
-  const handleRemovePptLink = (linkId: number) => {
-    setPptLinks(pptLinks.filter(link => link.id !== linkId));
-  };
-
-  // Handle checklist item changes
-  const handleChecklistChange = (itemId: string, checked: boolean) => {
-    setChecklistItems({
-      ...checklistItems,
-      [itemId]: checked
-    });
-  };
-
-  // Handle save all changes
-  const handleSaveChanges = () => {
-    const updatedApplicationData = {
-      ...selectedApplication,
-      status: selectedStatus,
-      pptLinks: pptLinks,
-      checklistItems: checklistItems,
-      notes: newNote.trim() 
-        ? [...(selectedApplication.notes || []), {
-            id: Date.now(),
-            round: noteRound,
-            content: newNote.trim(),
-            timestamp: new Date().toISOString().split('T')[0]
-          }]
-        : selectedApplication.notes || []
-    };
-
-    // Update the application in the state
-    setApplications(prev => prev.map(app => 
-      app.id === selectedApplication.id ? updatedApplicationData : app
-    ));
-
-    // Update selected application
-    setSelectedApplication(updatedApplicationData);
-
-    // Reset new note
-    setNewNote("");
 
     toast({
-      title: "Changes Saved",
-      description: "All application changes have been saved successfully.",
+        title: "Success",
+        description: "Changes saved successfully",
     });
+    } catch (error) {
+      console.error('Error saving changes:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save changes",
+        variant: "destructive"
+      });
+    }
   };
 
   // Reset filters
@@ -354,21 +392,20 @@ const Applications = () => {
       statuses: [],
       fundingRange: { min: 0, max: 10000000 },
     });
-    setApplications(mockApplications);
   };
 
   // Apply filters
   const handleApplyFilters = () => {
-    let filtered = [...mockApplications];
+    let filtered = [...applications];
     
     // Apply sector filter
     if (filters.sectors.length > 0) {
-      filtered = filtered.filter(app => filters.sectors.includes(app.sector));
+      filtered = filtered.filter(app => filters.sectors.includes(app.industry));
     }
     
     // Apply stage filter
     if (filters.stages.length > 0) {
-      filtered = filtered.filter(app => filters.stages.includes(app.stage));
+      filtered = filtered.filter(app => filters.stages.includes(app.currentState));
     }
     
     // Apply looking for filter
@@ -378,14 +415,16 @@ const Applications = () => {
     
     // Apply status filter
     if (filters.statuses.length > 0) {
-      filtered = filtered.filter(app => filters.statuses.includes(app.status));
+      filtered = filtered.filter(app => 
+        filters.statuses.includes(evaluations[app.projectId]?.projectStatus || 'NEW')
+      );
     }
     
     // Apply funding range filter
     if (filters.fundingRange.min > 0 || filters.fundingRange.max < 10000000) {
       filtered = filtered.filter(app => {
-        const fundingAskNumber = parseInt(app.fundingAsk.replace(/[^0-9]/g, ''));
-        return fundingAskNumber >= filters.fundingRange.min && fundingAskNumber <= filters.fundingRange.max;
+        const fundingAmount = app.fundingAmount;
+        return fundingAmount >= filters.fundingRange.min && fundingAmount <= filters.fundingRange.max;
       });
     }
     
@@ -395,13 +434,16 @@ const Applications = () => {
   // Handle search
   const handleSearch = () => {
     if (!searchTerm) {
-      setApplications(mockApplications);
+      // Reset to original data
+      formApi.getForms().then(response => {
+        setApplications(response.data.data);
+      });
       return;
     }
     
-    const filtered = mockApplications.filter(app => 
-      app.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      app.sector.toLowerCase().includes(searchTerm.toLowerCase())
+    const filtered = applications.filter(app => 
+      app.startupName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      app.industry.toLowerCase().includes(searchTerm.toLowerCase())
     );
     
     setApplications(filtered);
@@ -439,22 +481,22 @@ const Applications = () => {
         <table className="data-table">
           <thead>
             <tr>
-              <th onClick={() => requestSort('name')} className="cursor-pointer">
+              <th onClick={() => requestSort('startupName')} className="cursor-pointer">
                 <div className="flex items-center gap-1">
                   Startup Name
-                  {getSortIcon('name')}
+                  {getSortIcon('startupName')}
                 </div>
               </th>
-              <th onClick={() => requestSort('sector')} className="cursor-pointer">
+              <th onClick={() => requestSort('industry')} className="cursor-pointer">
                 <div className="flex items-center gap-1">
                   Industry/Sector
-                  {getSortIcon('sector')}
+                  {getSortIcon('industry')}
                 </div>
               </th>
-              <th onClick={() => requestSort('stage')} className="cursor-pointer">
+              <th onClick={() => requestSort('currentState')} className="cursor-pointer">
                 <div className="flex items-center gap-1">
                   Stage
-                  {getSortIcon('stage')}
+                  {getSortIcon('currentState')}
                 </div>
               </th>
               <th onClick={() => requestSort('lookingFor')} className="cursor-pointer">
@@ -463,45 +505,57 @@ const Applications = () => {
                   {getSortIcon('lookingFor')}
                 </div>
               </th>
-              <th onClick={() => requestSort('fundingAsk')} className="cursor-pointer">
+              <th onClick={() => requestSort('fundingAmount')} className="cursor-pointer">
                 <div className="flex items-center gap-1">
                   Funding Ask
-                  {getSortIcon('fundingAsk')}
+                  {getSortIcon('fundingAmount')}
                 </div>
               </th>
-              <th onClick={() => requestSort('revenue')} className="cursor-pointer">
+              <th onClick={() => requestSort('revenueAmount')} className="cursor-pointer">
                 <div className="flex items-center gap-1">
                   Current Revenue
-                  {getSortIcon('revenue')}
+                  {getSortIcon('revenueAmount')}
                 </div>
               </th>
-              <th onClick={() => requestSort('status')} className="cursor-pointer">
+              <th onClick={() => requestSort('projectStatus')} className="cursor-pointer">
                 <div className="flex items-center gap-1">
                   Application Status
-                  {getSortIcon('status')}
+                  {getSortIcon('projectStatus')}
                 </div>
               </th>
-              <th onClick={() => requestSort('timestamp')} className="cursor-pointer">
+              <th onClick={() => requestSort('submissionDate')} className="cursor-pointer">
                 <div className="flex items-center gap-1">
                   Date
-                  {getSortIcon('timestamp')}
+                  {getSortIcon('submissionDate')}
                 </div>
               </th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {applications.length > 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan={9} className="py-8 text-center">
+                  Loading applications...
+                </td>
+              </tr>
+            ) : applications.length > 0 ? (
               applications.map((app) => (
-                <tr key={app.id}>
-                  <td className="font-medium">{app.name}</td>
-                  <td>{app.sector}</td>
-                  <td>{app.stage}</td>
+                <tr key={app._id}>
+                  <td className="font-medium">{app.startupName}</td>
+                  <td>{app.industry}</td>
+                  <td>{app.currentState}</td>
                   <td>{app.lookingFor}</td>
-                  <td className="font-semibold">{app.fundingAsk}</td>
-                  <td>{app.revenue}</td>
-                  <td>{getStatusBadge(app.status)}</td>
-                  <td>{app.timestamp}</td>
+                  <td className="font-semibold">
+                    {app.fundingAmount.toLocaleString()} {app.fundingCurrency}
+                  </td>
+                  <td>
+                    {app.revenueAmount.toLocaleString()} {app.revenueCurrency}
+                  </td>
+                  <td>
+                    {getStatusBadge(evaluations[app.projectId]?.projectStatus || 'NEW')}
+                  </td>
+                  <td>{new Date(app.submissionDate).toLocaleDateString()}</td>
                   <td>
                     <Button 
                       size="sm" 
@@ -525,14 +579,14 @@ const Applications = () => {
         </table>
       </div>
 
-      {/* Application Details Dialog - Sleek and Classic Design */}
+      {/* Application Details Dialog */}
       {selectedApplication && (
         <Dialog open={showDetails} onOpenChange={setShowDetails}>
           <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
             <DialogHeader className="border-b pb-4">
               <DialogTitle className="text-2xl font-bold flex items-center gap-3">
-                {selectedApplication.name}
-                {getStatusBadge(selectedApplication.status)}
+                {selectedApplication.startupName}
+                {getStatusBadge(selectedEvaluation?.projectStatus || 'NEW')}
               </DialogTitle>
             </DialogHeader>
             
@@ -546,11 +600,11 @@ const Applications = () => {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
                       <p className="text-sm text-muted-foreground">Industry</p>
-                      <p className="font-medium">{selectedApplication.sector}</p>
+                      <p className="font-medium">{selectedApplication.industry}</p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Stage</p>
-                      <p className="font-medium">{selectedApplication.stage}</p>
+                      <p className="font-medium">{selectedApplication.currentState}</p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Looking For</p>
@@ -558,7 +612,9 @@ const Applications = () => {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Submission Date</p>
-                      <p className="font-medium">{selectedApplication.timestamp}</p>
+                      <p className="font-medium">
+                        {new Date(selectedApplication.submissionDate).toLocaleDateString()}
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -573,113 +629,123 @@ const Applications = () => {
                   <div className="grid grid-cols-2 gap-6">
                     <div>
                       <p className="text-sm text-muted-foreground">Funding Ask</p>
-                      <p className="text-2xl font-bold text-green-600">{selectedApplication.fundingAsk}</p>
+                      <p className="text-2xl font-bold text-green-600">
+                        {selectedApplication.fundingAmount.toLocaleString()} {selectedApplication.fundingCurrency}
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Current Revenue</p>
-                      <p className="text-2xl font-bold">{selectedApplication.revenue}</p>
+                      <p className="text-2xl font-bold">
+                        {selectedApplication.revenueAmount.toLocaleString()} {selectedApplication.revenueCurrency}
+                      </p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Status Management */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Status Management</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                <CardContent>
+                  <div className="space-y-4">
                     <div>
                       <p className="text-sm text-muted-foreground mb-2">Update Status</p>
-                      <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
+                      <Select 
+                        value={selectedEvaluation?.projectStatus || 'On Hold'} 
+                        onValueChange={handleStatusUpdate}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select status">
+                            {selectedEvaluation?.projectStatus || 'On Hold'}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           <SelectGroup>
-                            <SelectItem value="NEW">New</SelectItem>
-                            <SelectItem value="ROUND-1">Round 1 Cleared</SelectItem>
-                            <SelectItem value="ROUND-2">Round 2 Cleared</SelectItem>
-                            <SelectItem value="SELECTED">Selected</SelectItem>
-                            <SelectItem value="REJECTED">Rejected</SelectItem>
-                            <SelectItem value="ON-HOLD">On Hold</SelectItem>
+                            <SelectItem value="On Hold">On Hold</SelectItem>
+                            <SelectItem value="Round 1 Cleared">Round 1 Cleared</SelectItem>
+                            <SelectItem value="Round 2 Cleared">Round 2 Cleared</SelectItem>
+                            <SelectItem value="Selected">Selected</SelectItem>
+                            <SelectItem value="Rejected">Rejected</SelectItem>
                           </SelectGroup>
                         </SelectContent>
                       </Select>
                     </div>
-                    
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-2">Reviewer</p>
-                      <p className="font-medium">Jane Doe</p>
                     </div>
                   </CardContent>
                 </Card>
 
                 {/* Evaluation Checklist */}
+              {selectedEvaluation && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Evaluation Checklist</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {[
-                        { id: 'check-1', label: 'Founder is full-time' },
-                        { id: 'check-2', label: 'Problem clearly defined' },
-                        { id: 'check-3', label: 'Solution is validated' },
-                        { id: 'check-4', label: 'Clear differentiation' },
-                        { id: 'check-5', label: 'Large enough TAM/SAM' },
-                        { id: 'check-6', label: 'Strong team composition' },
-                      ].map((item) => (
-                        <div key={item.id} className="flex items-center space-x-2">
+                      {selectedEvaluation.evaluationChecklist.map((item) => (
+                        <div key={item._id} className="flex items-center space-x-2">
                           <Checkbox 
-                            id={item.id}
-                            checked={checklistItems[item.id]}
-                            onCheckedChange={(checked) => handleChecklistChange(item.id, checked as boolean)}
+                            id={item._id}
+                            checked={item.checked}
+                            onCheckedChange={(checked) => 
+                              handleChecklistUpdate(item._id, checked as boolean, item.notes)
+                            }
                           />
-                          <label htmlFor={item.id} className="text-sm">{item.label}</label>
+                          <label htmlFor={item._id} className="text-sm">{item.name}</label>
                         </div>
                       ))}
                     </div>
                   </CardContent>
                 </Card>
-              </div>
+              )}
 
               {/* Notes Section */}
+              {selectedEvaluation && (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Review Notes</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Existing Notes */}
-                  {selectedApplication.notes && selectedApplication.notes.length > 0 && (
                     <div className="space-y-3">
-                      {selectedApplication.notes.map((note: any) => (
-                        <div key={note.id} className="border-l-4 border-blue-500 pl-4 py-2">
-                          <div className="flex justify-between items-start mb-1">
-                            <Badge variant="outline">{note.round}</Badge>
-                            <span className="text-xs text-muted-foreground">{note.timestamp}</span>
+                      {Object.entries(selectedEvaluation.roundNotes).map(([round, notes]) => (
+                        notes && (
+                          <div key={round} className="border-l-4 border-blue-500 pl-4 py-2">
+                            <div className="flex justify-between items-start mb-1">
+                              <Badge variant="outline">
+                                {round === 'firstRound' ? 'First Round' :
+                                 round === 'secondRound' ? 'Second Round' :
+                                 round === 'thirdRound' ? 'Third Round' :
+                                 'General Notes'}
+                              </Badge>
+                            </div>
+                            <p className="text-sm">{notes}</p>
                           </div>
-                          <p className="text-sm">{note.content}</p>
-                        </div>
+                        )
                       ))}
-                      <Separator />
                     </div>
-                  )}
 
-                  {/* Add New Note */}
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">
-                      <Select value={noteRound} onValueChange={setNoteRound}>
+                      <Select 
+                        value={noteRound} 
+                        onValueChange={setNoteRound}
+                      >
                         <SelectTrigger>
-                          <SelectValue placeholder="Select round" />
+                          <SelectValue placeholder="Select round">
+                            {noteRound === 'firstRound' ? 'First Round' :
+                             noteRound === 'secondRound' ? 'Second Round' :
+                             noteRound === 'thirdRound' ? 'Third Round' :
+                             'General Notes'}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           <SelectGroup>
-                            <SelectItem value="First Round">First Round</SelectItem>
-                            <SelectItem value="Second Round">Second Round</SelectItem>
-                            <SelectItem value="Final Round">Final Round</SelectItem>
-                            <SelectItem value="General">General</SelectItem>
+                            <SelectItem value="firstRound">First Round</SelectItem>
+                            <SelectItem value="secondRound">Second Round</SelectItem>
+                            <SelectItem value="thirdRound">Third Round</SelectItem>
+                            <SelectItem value="generalNotes">General Notes</SelectItem>
                           </SelectGroup>
                         </SelectContent>
                       </Select>
@@ -690,27 +756,33 @@ const Applications = () => {
                       onChange={(e) => setNewNote(e.target.value)}
                       className="min-h-[100px]"
                     />
+                    <Button 
+                      onClick={() => handleRoundNotesUpdate(noteRound, newNote)}
+                      disabled={!newNote.trim()}
+                    >
+                      Add Note
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
+              )}
 
               {/* Documents & Links */}
+              {selectedEvaluation && (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Documents & Pitch Materials</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Existing Links */}
-                  {pptLinks.length > 0 && (
                     <div className="space-y-2">
-                      {pptLinks.map((link) => (
-                        <div key={link.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      {selectedEvaluation.additionalDocuments.map((doc) => (
+                        <div key={doc._id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div className="flex items-center gap-3">
                             <Link size={18} className="text-blue-600" />
                             <div>
-                              <p className="font-medium">{link.name}</p>
+                              <p className="font-medium">{doc.name}</p>
                               <a 
-                                href={link.url} 
+                                href={doc.url} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
                                 className="text-sm text-blue-600 hover:underline flex items-center gap-1"
@@ -722,18 +794,15 @@ const Applications = () => {
                           <Button 
                             variant="ghost" 
                             size="sm" 
-                            onClick={() => handleRemovePptLink(link.id)}
+                            onClick={() => handleRemoveDocument(doc._id)}
                             className="text-red-600 hover:text-red-700"
                           >
                             <Trash2 size={16} />
                           </Button>
                         </div>
                       ))}
-                      <Separator />
                     </div>
-                  )}
 
-                  {/* Add New Link */}
                   <div className="space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <Input
@@ -748,8 +817,11 @@ const Applications = () => {
                       />
                     </div>
                     <Button 
-                      onClick={handleAddPptLink} 
-                      size="sm" 
+                        onClick={() => handleAddDocument({
+                          name: newLinkName,
+                          url: newLinkUrl,
+                          type: 'Document'
+                        })}
                       disabled={!newLinkName.trim() || !newLinkUrl.trim()}
                       className="w-full"
                     >
@@ -759,16 +831,23 @@ const Applications = () => {
                   </div>
                 </CardContent>
               </Card>
+              )}
             </div>
             
             <DialogFooter className="border-t pt-4">
+              <div className="flex justify-between w-full">
               <Button variant="outline" onClick={() => setShowDetails(false)}>
                 Close
               </Button>
-              <Button onClick={handleSaveChanges}>
-                <Save size={16} className="mr-2" />
+                <Button 
+                  onClick={handleSaveChanges}
+                  disabled={!hasChanges}
+                  className="ml-2"
+                >
+                  <Save className="mr-2 h-4 w-4" />
                 Save Changes
               </Button>
+              </div>
             </DialogFooter>
           </DialogContent>
         </Dialog>
