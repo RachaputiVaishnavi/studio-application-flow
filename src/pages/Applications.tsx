@@ -83,10 +83,10 @@ interface EvaluationData {
   projectId: string;
   projectStatus: string;
   roundNotes: {
-    firstRound: string;
-    secondRound: string;
-    thirdRound: string;
-    generalNotes: string;
+    firstRound: Array<{ text: string; timestamp: string }>;
+    secondRound: Array<{ text: string; timestamp: string }>;
+    thirdRound: Array<{ text: string; timestamp: string }>;
+    generalNotes: Array<{ text: string; timestamp: string }>;
   };
   additionalDocuments: Array<{
     _id: string;
@@ -101,6 +101,14 @@ interface EvaluationData {
     notes: string;
   }>;
   lastUpdated: string;
+}
+
+// Update the pendingChanges type
+interface PendingChanges {
+  status?: string;
+  roundNotes?: Record<string, Array<{ text: string; timestamp: string }>>;
+  checklist?: Array<{ _id: string; checked: boolean; notes?: string }>;
+  documents?: Array<{ name: string; url: string; type: string } | { _id: string; remove: true }>;
 }
 
 const Applications = () => {
@@ -120,12 +128,7 @@ const Applications = () => {
   const [noteRound, setNoteRound] = useState("firstRound");
   const [newLinkName, setNewLinkName] = useState("");
   const [newLinkUrl, setNewLinkUrl] = useState("");
-  const [pendingChanges, setPendingChanges] = useState<{
-    status?: string;
-    roundNotes?: Record<string, string>;
-    checklist?: Array<{ _id: string; checked: boolean; notes?: string }>;
-    documents?: Array<{ name: string; url: string; type: string } | { _id: string; remove: true }>;
-  }>({});
+  const [pendingChanges, setPendingChanges] = useState<PendingChanges>({});
 
   // Filter options
   const [filters, setFilters] = useState({
@@ -135,6 +138,35 @@ const Applications = () => {
     statuses: [] as string[],
     fundingRange: { min: 0, max: 10000000 },
   });
+
+  // Transform notes data to ensure it's in the correct format
+  const transformNotes = (notes: any) => {
+    if (!notes) return {
+      firstRound: [],
+      secondRound: [],
+      thirdRound: [],
+      generalNotes: []
+    };
+
+    const transformRound = (roundNotes: any): Array<{ text: string; timestamp: string }> => {
+      if (!roundNotes) return [];
+      if (Array.isArray(roundNotes)) return roundNotes;
+      if (typeof roundNotes === 'string') {
+        return [{
+          text: roundNotes,
+          timestamp: new Date().toISOString()
+        }];
+      }
+      return [];
+    };
+
+    return {
+      firstRound: transformRound(notes.firstRound),
+      secondRound: transformRound(notes.secondRound),
+      thirdRound: transformRound(notes.thirdRound),
+      generalNotes: transformRound(notes.generalNotes)
+    };
+  };
 
   // Fetch data on component mount
   useEffect(() => {
@@ -148,8 +180,14 @@ const Applications = () => {
         const formsData = formsResponse.data.data;
         const evaluationsData = evaluationsResponse.data.data;
 
+        // Transform evaluations data
+        const transformedEvaluations = evaluationsData.map((evaluation: any) => ({
+          ...evaluation,
+          roundNotes: transformNotes(evaluation.roundNotes)
+        }));
+
         // Convert evaluations array to object with projectId as key
-        const evaluationsMap = evaluationsData.reduce((acc: Record<string, EvaluationData>, evaluation: EvaluationData) => {
+        const evaluationsMap = transformedEvaluations.reduce((acc: Record<string, EvaluationData>, evaluation: EvaluationData) => {
           acc[evaluation.projectId] = evaluation;
           return acc;
         }, {});
@@ -205,7 +243,15 @@ const Applications = () => {
   // Handle application selection
   const handleViewDetails = async (application: FormData) => {
     setSelectedApplication(application);
-    setSelectedEvaluation(evaluations[application.projectId] || null);
+    const evaluation = evaluations[application.projectId];
+    if (evaluation) {
+      setSelectedEvaluation({
+        ...evaluation,
+        roundNotes: transformNotes(evaluation.roundNotes)
+      });
+    } else {
+      setSelectedEvaluation(null);
+    }
     setShowDetails(true);
     
     // Reset form states
@@ -258,6 +304,11 @@ const Applications = () => {
     if (!selectedApplication) return;
     console.log('Notes update:', { round, notes, projectId: selectedApplication.projectId });
     
+    const newNote = {
+      text: notes,
+      timestamp: new Date().toISOString()
+    };
+
     // Update local state immediately for better UX
     setEvaluations(prev => {
       const currentEvaluation = prev[selectedApplication.projectId];
@@ -267,7 +318,10 @@ const Applications = () => {
         ...currentEvaluation,
         roundNotes: {
           ...currentEvaluation.roundNotes,
-          [round]: notes
+          [round]: [
+            ...(currentEvaluation.roundNotes[round as keyof typeof currentEvaluation.roundNotes] || []),
+            newNote
+          ]
         }
       };
 
@@ -282,7 +336,13 @@ const Applications = () => {
 
     setPendingChanges(prev => ({
       ...prev,
-      roundNotes: { ...(prev.roundNotes || {}), [round]: notes }
+      roundNotes: {
+        ...(prev.roundNotes || {}),
+        [round]: [
+          ...(prev.roundNotes?.[round] || []),
+          newNote
+        ]
+      }
     }));
     setHasChanges(true);
 
@@ -710,7 +770,7 @@ const Applications = () => {
                 <CardContent className="space-y-4">
                     <div className="space-y-3">
                       {Object.entries(selectedEvaluation.roundNotes).map(([round, notes]) => (
-                        notes && (
+                        notes && notes.length > 0 && (
                           <div key={round} className="border-l-4 border-blue-500 pl-4 py-2">
                             <div className="flex justify-between items-start mb-1">
                               <Badge variant="outline">
@@ -720,7 +780,16 @@ const Applications = () => {
                                  'General Notes'}
                               </Badge>
                             </div>
-                            <p className="text-sm">{notes}</p>
+                            <div className="space-y-2">
+                              {notes.map((note, index) => (
+                                <div key={index} className="bg-muted/50 p-2 rounded-md">
+                                  <p className="text-sm">{note.text}</p>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {new Date(note.timestamp).toLocaleString()}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         )
                       ))}
