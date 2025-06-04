@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
@@ -17,63 +16,184 @@ import {
   BarChart,
   Bar
 } from "recharts";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { formApi } from "@/services/api";
+import { evaluationApi } from "@/services/api";
 
-// Mock data
-const stageData = [
-  { name: "Idea", value: 15 },
-  { name: "MVP", value: 35 },
-  { name: "Early Traction", value: 28 },
-  { name: "Growth", value: 22 },
-];
-
-const industryData = [
-  { name: "SaaS", value: 30 },
-  { name: "Fintech", value: 25 },
-  { name: "Health", value: 15 },
-  { name: "Education", value: 10 },
-  { name: "Food", value: 8 },
-  { name: "AI/ML", value: 12 },
-];
-
-const statusData = [
-  { name: "New", value: 45 },
-  { name: "Round 1", value: 30 },
-  { name: "Round 2", value: 15 },
-  { name: "Selected", value: 5 },
-  { name: "Rejected", value: 20 },
-  { name: "On Hold", value: 10 },
-];
-
-const monthlyApplicationsData = [
-  { name: "Jan", applications: 20 },
-  { name: "Feb", applications: 25 },
-  { name: "Mar", applications: 30 },
-  { name: "Apr", applications: 40 },
-  { name: "May", applications: 35 },
-  { name: "Jun", applications: 50 },
-  { name: "Jul", applications: 55 },
-  { name: "Aug", applications: 45 },
-  { name: "Sep", applications: 60 },
-  { name: "Oct", applications: 65 },
-  { name: "Nov", applications: 70 },
-  { name: "Dec", applications: 75 },
-];
-
-const fundingDistributionData = [
-  { range: "<$100k", count: 35 },
-  { range: "$100k-$250k", count: 45 },
-  { range: "$250k-$500k", count: 25 },
-  { range: "$500k-$1M", count: 15 },
-  { range: ">$1M", count: 5 },
-];
-
-// Colors
+// Colors for charts
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
+// Currency conversion rates (you would typically fetch these from an API)
+const CURRENCY_RATES = {
+  INR: 1,
+  USD: 0.012,
+  EUR: 0.011,
+  GBP: 0.0095,
+};
+
 const Dashboard = () => {
+  const [applications, setApplications] = useState<any[]>([]);
+  const [evaluations, setEvaluations] = useState<any[]>([]);
+  const [selectedCurrency, setSelectedCurrency] = useState("INR");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [formsResponse, evaluationsResponse] = await Promise.all([
+          formApi.getForms(),
+          evaluationApi.getEvaluations()
+        ]);
+        setApplications(formsResponse.data.data);
+        setEvaluations(evaluationsResponse.data.data);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Convert amount to selected currency
+  const convertCurrency = (amount: number, fromCurrency: string) => {
+    const inrAmount = amount * (1 / CURRENCY_RATES[fromCurrency as keyof typeof CURRENCY_RATES]);
+    return inrAmount * CURRENCY_RATES[selectedCurrency as keyof typeof CURRENCY_RATES];
+  };
+
+  // Calculate summary statistics
+  const totalApplications = applications.length;
+  const selectedStartups = evaluations.filter(evaluation => 
+    evaluation.projectStatus === 'Selected'
+  ).length;
+  
+  // Calculate average funding ask from form data
+  const averageFundingAsk = applications.length > 0 
+    ? applications.reduce((sum, app) => {
+        // Get funding amount and currency from form data
+        const amount = app.fundingAmount || 0;
+        const currency = app.fundingCurrency || 'INR';
+        return sum + convertCurrency(amount, currency);
+      }, 0) / applications.length
+    : 0;
+  
+  // Calculate pending reviews from evaluations
+  const pendingReviews = evaluations.filter(evaluation => {
+    const status = evaluation.projectStatus;
+    return status === 'New' || status === 'Round 1' || status === 'Round 2';
+  }).length;
+
+  // Add console logs for debugging
+  console.log('Applications:', applications);
+  console.log('Evaluations:', evaluations);
+  console.log('Average Funding Ask:', averageFundingAsk);
+  console.log('Pending Reviews:', pendingReviews);
+
+  // Prepare data for charts
+  const stageData = Object.entries(
+    applications.reduce((acc, app) => {
+      acc[app.currentState] = (acc[app.currentState] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>)
+  ).map(([name, value]) => ({ name, value }));
+
+  const industryData = Object.entries(
+    applications.reduce((acc, app) => {
+      acc[app.industry] = (acc[app.industry] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>)
+  ).map(([name, value]) => ({ name, value }));
+
+  // Calculate application status data from evaluations
+  const statusData = Object.entries(
+    evaluations.reduce((acc, evaluation) => {
+      const status = evaluation.projectStatus || 'New';
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>)
+  ).map(([name, value]) => ({ name, value }));
+
+  // Get all months in the last 12 months
+  const getLast12Months = () => {
+    const months = [];
+    const today = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      months.push(date.toLocaleString('default', { month: 'short' }));
+    }
+    return months;
+  };
+
+  // Calculate monthly applications with proper date handling
+  const monthlyApplicationsData = getLast12Months().map(month => {
+    const count = applications.filter(app => {
+      const appDate = new Date(app.submissionDate);
+      const appMonth = appDate.toLocaleString('default', { month: 'short' });
+      return appMonth === month;
+    }).length;
+    return { name: month, applications: count };
+  });
+
+  // Calculate funding distribution with proper currency conversion
+  const fundingDistributionData = [
+    { 
+      range: "<₹10L", 
+      count: applications.filter(app => {
+        const amount = convertCurrency(app.fundingAmount, app.fundingCurrency);
+        return amount < 1000000;
+      }).length 
+    },
+    { 
+      range: "₹10L-₹25L", 
+      count: applications.filter(app => {
+        const amount = convertCurrency(app.fundingAmount, app.fundingCurrency);
+        return amount >= 1000000 && amount < 2500000;
+      }).length 
+    },
+    { 
+      range: "₹25L-₹50L", 
+      count: applications.filter(app => {
+        const amount = convertCurrency(app.fundingAmount, app.fundingCurrency);
+        return amount >= 2500000 && amount < 5000000;
+      }).length 
+    },
+    { 
+      range: "₹50L-₹1Cr", 
+      count: applications.filter(app => {
+        const amount = convertCurrency(app.fundingAmount, app.fundingCurrency);
+        return amount >= 5000000 && amount < 10000000;
+      }).length 
+    },
+    { 
+      range: ">₹1Cr", 
+      count: applications.filter(app => {
+        const amount = convertCurrency(app.fundingAmount, app.fundingCurrency);
+        return amount >= 10000000;
+      }).length 
+    },
+  ];
+
+  if (loading) {
+    return <div className="p-6">Loading...</div>;
+  }
+
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Select currency" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="INR">Indian Rupee (₹)</SelectItem>
+            <SelectItem value="USD">US Dollar ($)</SelectItem>
+            <SelectItem value="EUR">Euro (€)</SelectItem>
+            <SelectItem value="GBP">British Pound (£)</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
       
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
@@ -82,8 +202,7 @@ const Dashboard = () => {
             <CardTitle className="text-sm font-medium">Total Applications</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">125</div>
-            <p className="text-xs text-muted-foreground mt-1">+12% from last month</p>
+            <div className="text-3xl font-bold">{totalApplications}</div>
           </CardContent>
         </Card>
         
@@ -92,8 +211,7 @@ const Dashboard = () => {
             <CardTitle className="text-sm font-medium">Selected Startups</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">5</div>
-            <p className="text-xs text-muted-foreground mt-1">+1 from last month</p>
+            <div className="text-3xl font-bold">{selectedStartups}</div>
           </CardContent>
         </Card>
         
@@ -102,8 +220,15 @@ const Dashboard = () => {
             <CardTitle className="text-sm font-medium">Average Funding Ask</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">$245K</div>
-            <p className="text-xs text-muted-foreground mt-1">-3% from last month</p>
+            <div className="text-3xl font-bold">
+              {selectedCurrency === 'INR' && '₹'}
+              {selectedCurrency === 'USD' && '$'}
+              {selectedCurrency === 'EUR' && '€'}
+              {selectedCurrency === 'GBP' && '£'}
+              {averageFundingAsk.toLocaleString(undefined, {
+                maximumFractionDigits: 0
+              })}
+            </div>
           </CardContent>
         </Card>
         
@@ -112,8 +237,7 @@ const Dashboard = () => {
             <CardTitle className="text-sm font-medium">Pending Reviews</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">18</div>
-            <p className="text-xs text-muted-foreground mt-1">+5 from last month</p>
+            <div className="text-3xl font-bold">{pendingReviews}</div>
           </CardContent>
         </Card>
       </div>
